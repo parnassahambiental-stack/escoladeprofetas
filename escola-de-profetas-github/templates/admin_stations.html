@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Admin · Estações{% endblock %}
+{% block body_class %}palette-bg{% endblock %}
+{% block content %}
+<section class="section-heading glass-card">
+  <p class="eyebrow">Painel privado</p>
+  <h1>Progresso nas Estações</h1>
+  <p>Acompanhamento privado da Escola sobre estação atual, aula atual e sinais de atenção.</p>
+</section>
+
+<section class="card table-card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Aluna</th><th>Estação atual</th><th>Aula atual</th><th>Formação</th><th>Estação</th><th>Última conclusão</th><th>Indicador</th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.user.name }}</td>
+            <td>{{ row.current.title if row.current else 'Concluída' }}</td>
+            <td>{{ row.lesson.title if row.lesson else 'Sem aula pendente' }}</td>
+            <td>{{ row.journey.percent }}%</td>
+            <td>{{ row.station_progress.percent }}%</td>
+            <td>{{ row.last_done }}</td>
+            <td><span class="pill">{{ row.status }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Pedidos de Oração{% endblock %}
+{% block body_class %}palette-bg{% endblock %}
+{% block content %}
+<section class="section-heading glass-card hero-feather">
+  <p class="eyebrow">Oração</p>
+  <h1>Pedidos de oração</h1>
+  <p>Pedidos sensíveis podem receber orientação para procurar apoio pastoral ou profissional adequado.</p>
+</section>
+<section class="grid two">
+  <form class="card form-card glass-card" method="post">
+    <label>Categoria <input name="category" value="Geral"></label>
+    <label>Pedido <textarea name="request" rows="6" required></textarea></label>
+    <button class="button primary" type="submit">Enviar pedido</button>
+  </form>
+  <article class="card glass-card">
+    <h2>Meus pedidos</h2>
+    {% for item in requests %}
+      <div class="mini-item"><strong>{{ item.category }} · {{ item.status }}</strong><span>{{ item.request }}</span></div>
+    {% else %}
+      <p class="empty">Nenhum pedido de oração enviado ainda.</p>
+    {% endfor %}
+  </article>
+</section>
+{% endblock %}

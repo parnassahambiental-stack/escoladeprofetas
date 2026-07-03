@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Ciclos de Formação · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="cycles-visual-section">
+  <div class="cycles-image-wrap">
+    <img
+      src="{{ url_for('static', filename='img/ciclos_formacao.png') }}"
+      alt="Ciclos de Formação da Escola de Profetas"
+      class="cycles-main-image"
+    >
+
+    <a class="cycle-button-hotspot hotspot-leao" href="/ciclo/leao" aria-label="Acessar Ciclo Leão — Governo e Identidade" title="Acessar Ciclo Leão"></a>
+    <a class="cycle-button-hotspot hotspot-aguia" href="/ciclo/aguia" aria-label="Acessar Ciclo Águia — Visão e Discernimento" title="Acessar Ciclo Águia"></a>
+    <a class="cycle-button-hotspot hotspot-homem" href="/ciclo/homem" aria-label="Acessar Ciclo Homem — Caráter e Maturidade" title="Acessar Ciclo Homem"></a>
+    <a class="cycle-button-hotspot hotspot-boi" href="/ciclo/boi" aria-label="Acessar Ciclo Boi — Serviço e Constância" title="Acessar Ciclo Boi"></a>
+  </div>
+
+  <div class="cycles-mobile-actions" aria-label="Acessos aos ciclos de formação">
+    <a href="/ciclo/leao">Acessar Ciclo Leão</a>
+    <a href="/ciclo/aguia">Acessar Ciclo Águia</a>
+    <a href="/ciclo/homem">Acessar Ciclo Homem</a>
+    <a href="/ciclo/boi">Acessar Ciclo Boi</a>
+  </div>
+</section>
+
+<section class="cycles-support glass-card">
+  <div>
+    <p class="eyebrow">Formação por ciclos</p>
+    <h2>As estações da jornada estão organizadas em quatro ciclos de formação espiritual.</h2>
+    <p>Cada ciclo abre seus submódulos internos, preservando uma caminhada cristocêntrica: Palavra, oração, maturidade e serviço ao Corpo de Cristo.</p>
+  </div>
+  <div class="progress-card cycle-overview">
+    <div>
+      <span>Progresso da formação completa</span>
+      <strong><span data-progress-number="{{ journey.percent }}">0</span>%</strong>
+    </div>
+    <div class="progress-track"><div class="progress-bar progress-animated" style="--progress: {{ journey.percent }}%"></div></div>
+  </div>
+</section>
+{% endblock %}

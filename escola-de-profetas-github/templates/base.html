@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Escola de Profetas{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='shofar-enquadrado') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <div class="ambient-light"></div>
+  <header class="topbar">
+    <div class="topbar-main">
+      <a class="brand" href="{{ url_for('index') }}">
+        <img class="brand-logo brand-logo-horizontal" src="{{ url_for('static', filename='img/logo_escola_profetas_horizontal.png', v='transparent') }}" alt="Escola de Profetas" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';">
+        <span class="brand-text-fallback">
+          <strong>Escola de Profetas</strong>
+          <small>voz · visão · caráter · serviço</small>
+        </span>
+      </a>
+      <div class="user-switch">
+        {% if user %}
+          <span>{{ user.name }}</span>
+          <details>
+            <summary>Trocar</summary>
+            <div class="switch-menu">
+              {% for demo in demo_users %}
+                <a href="{{ url_for('switch_user', user_id=demo.id) }}">{{ demo.name }}{% if demo.role == 'admin' %} · admin{% endif %}</a>
+              {% endfor %}
+            </div>
+          </details>
+        {% else %}
+          <a href="{{ url_for('login') }}">Entrar</a>
+        {% endif %}
+      </div>
+    </div>
+    <nav class="nav desktop-nav">
+      <a href="{{ url_for('index') }}">Início</a>
+      <a href="{{ url_for('index') }}#sobre">Sobre</a>
+      <a href="{{ url_for('index') }}#trilhas">Trilhas</a>
+      <a href="{{ url_for('cursos') }}">Cursos</a>
+      <a href="{{ url_for('index') }}#comunidade">Comunidade</a>
+      <a href="{{ url_for('index') }}#contato">Contato</a>
+      <a class="student-area" href="{{ url_for('aluno') }}">Área do Aluno</a>
+      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_alunos') }}">Alunos</a>{% endif %}
+      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_compras') }}">Compras</a>{% endif %}
+      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_stations') }}">Admin Ciclos</a>{% endif %}
+      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_course_comments') }}">Comentários</a>{% endif %}
+    </nav>
+  </header>
+
+  <main class="page fade-in">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer" id="contato">
+    <div class="footer-brand">
+      <img class="footer-logo" src="{{ url_for('static', filename='img/logo_escola_profetas.png', v='transparent') }}" alt="Escola de Profetas" onerror="this.style.display='none';">
+      <div>
+        <strong>Escola de Profetas</strong>
+        <p>Formação espiritual para voz, visão, caráter e serviço ao Corpo de Cristo.</p>
+      </div>
+    </div>
+    <div class="footer-columns">
+      <div>
+        <strong>Navegação</strong>
+        <a href="{{ url_for('index') }}#sobre">Sobre</a>
+        <a href="{{ url_for('index') }}#trilhas">Trilhas</a>
+        <a href="{{ url_for('cursos') }}">Cursos</a>
+      </div>
+      <div>
+        <strong>Comunidade</strong>
+        <a href="{{ url_for('duvidas') }}">Dúvidas</a>
+        <a href="{{ url_for('cursos') }}">Cursos</a>
+        <a href="{{ url_for('mapa_ministerial') }}">Mapa Ministerial</a>
+      </div>
+      <div>
+        <strong>Contato</strong>
+        <span>contato@escoladeprofetas.local</span>
+        <span>Instagram · YouTube · Comunidade</span>
+        <form class="newsletter-form">
+          <input type="email" placeholder="Receber novidades" aria-label="Receber novidades">
+          <button class="button" type="button">Enviar</button>
+        </form>
+      </div>
+    </div>
+  </footer>
+  <nav class="mobile-tabbar" aria-label="Navegação principal">
+    <a href="{{ url_for('index') }}">Início</a>
+    <a href="{{ url_for('estacoes') }}">Ciclos</a>
+    <a href="{{ url_for('duvidas') }}">Dúvidas</a>
+    <a href="{{ url_for('cursos') }}">Cursos</a>
+    {% if user and user.role == 'admin' %}
+      <a href="{{ url_for('admin') }}">Admin</a>
+    {% else %}
+      <a href="{{ url_for('mapa_ministerial') }}">Mapa</a>
+    {% endif %}
+  </nav>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

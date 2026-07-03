@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Admin · Comentários do Curso{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="cycles-hero glass-card">
+  <p class="eyebrow">Painel privado</p>
+  <h1>Comentários dos alunos</h1>
+  <p>Reflexões registradas nas aulas da Escola de Profetas.</p>
+  <form class="filter-row" method="get">
+    <select name="cycle">
+      <option value="">Todos os ciclos</option>
+      {% for cycle in cycles %}
+        <option value="{{ cycle.slug }}" {% if cycle_filter == cycle.slug %}selected{% endif %}>{{ cycle.name }} · {{ cycle.title }}</option>
+      {% endfor %}
+    </select>
+    <button class="button" type="submit">Filtrar</button>
+  </form>
+</section>
+
+<section class="admin-comments-list">
+  {% for item in rows %}
+    {% set row = item.row %}
+    <article class="admin-comment-card glass-card">
+      <div>
+        <span class="pill">{{ item.cycle.name if item.cycle else row.cycle_slug }}</span>
+        <span class="pill soft">{{ row.status or 'nao_iniciado' }}</span>
+      </div>
+      <h2>{{ item.content.title if item.content else row.content_slug }}</h2>
+      <p><strong>{{ row.user_name }}</strong> · {{ row.email }} · {{ row.updated_at }}</p>
+      <blockquote>{{ row.comment_text }}</blockquote>
+    </article>
+  {% else %}
+    <section class="callout glass-card">
+      <p>Nenhuma reflexão encontrada para o filtro selecionado.</p>
+    </section>
+  {% endfor %}
+</section>
+{% endblock %}

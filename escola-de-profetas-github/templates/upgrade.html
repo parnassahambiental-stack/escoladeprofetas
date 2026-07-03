@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Plano Crescer · Escola de Profetas{% endblock %}
+{% block body_class %}feather-bg{% endblock %}
+{% block content %}
+<section class="section-heading glass-card hero-feather">
+  <p class="eyebrow">Escola de Profetas · Quem Deseja Crescer</p>
+  <h1>Plano Crescer dentro da Escola</h1>
+  <p class="price">R$ 10/mês</p>
+  <p>Uma jornada de formação profética com fundamento bíblico, sobriedade espiritual, exercícios semanais e acompanhamento privado.</p>
+</section>
+<section class="grid three stagger">
+  {% for benefit in ['Ciclos de formação profética', 'Estações de maturidade', 'Biblioteca de orações', 'Módulo sobre anjos com segurança bíblica', 'Canal de dúvidas com limite', 'Diário guiado premium', 'Check-in semanal', 'Mapa de crescimento espiritual'] %}
+    <article class="card glass-card premium-card"><h3>{{ benefit }}</h3><p>Construído para crescimento constante, sem pressa e sem espetáculo.</p></article>
+  {% endfor %}
+</section>
+<section class="callout glass-card soft-glow">
+  <form method="post" action="{{ url_for('simulate_subscription') }}">
+    <button class="button primary" type="submit">Entrar na Escola pelo Plano Crescer</button>
+  </form>
+  <form method="post" action="{{ url_for('simulate_subscription') }}">
+    <input type="hidden" name="months" value="6">
+    <button class="button" type="submit">Admin/dev: simular assinatura iniciada há 6 meses</button>
+  </form>
+</section>
+{% endblock %}

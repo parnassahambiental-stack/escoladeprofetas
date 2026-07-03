@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Diário{% endblock %}
+{% block body_class %}palette-bg{% endblock %}
+{% block content %}
+<section class="section-heading">
+  <p class="eyebrow">Diário guiado</p>
+  <h1>Diário espiritual</h1>
+  <p>Diários só aparecem para a mentora se você marcar “Compartilhar com a Escola”.</p>
+</section>
+<section class="grid two">
+  <form class="card form-card" method="post">
+    <label>Título <input name="title" required></label>
+    <label>Humor <input name="mood" placeholder="paz, cansada, grata..."></label>
+    <label>Conteúdo <textarea name="content" rows="7" required></textarea></label>
+    <label class="check-row"><input type="checkbox" name="share_with_mentor"><span>Compartilhar com a Escola</span></label>
+    <button class="button primary" type="submit">Salvar registro</button>
+  </form>
+  <article class="card">
+    <h2>Registros</h2>
+    {% for item in entries %}
+      <div class="mini-item"><strong>{{ item.title }}</strong><span>{{ item.mood }} · {{ item.created_at }}</span><p>{{ item.content }}</p></div>
+    {% else %}
+      <p class="empty">Sua formação começa hoje.</p>
+    {% endfor %}
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Compras · Admin{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="section-heading glass-card">
+  <p class="eyebrow">Admin</p>
+  <h1>Compras</h1>
+  <p>Pedidos, status e liberação manual para teste.</p>
+</section>
+<section class="admin-comments-list">
+  {% for row in rows %}
+    <article class="admin-comment-card">
+      <div>
+        <strong>{{ row.user_name }} · {{ row.course_title }}</strong>
+        <p>{{ row.email }} · {{ row.status }} · R$ {{ '%.2f'|format((row.amount_cents or 0) / 100) }}</p>
+        <p>{{ row.payment_reference or 'Sem referência' }} · {{ row.created_at }}</p>
+      </div>
+      {% if row.status != 'paid' %}
+        <form method="post" action="{{ url_for('admin_marcar_compra_paga', purchase_id=row.id) }}">
+          <button class="button primary" type="submit">Marcar como pago</button>
+        </form>
+      {% endif %}
+    </article>
+  {% else %}
+    <p class="empty">Nenhuma compra registrada.</p>
+  {% endfor %}
+</section>
+{% endblock %}

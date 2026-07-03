@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Acesso Inicial · Escola de Profetas{% endblock %}
+{% block content %}
+<section class="section-heading glass-card">
+  <p class="eyebrow">Escola de Profetas · acesso inicial</p>
+  <h1>Fundamentos da Escola</h1>
+  <p>Um início leve para organizar Palavra, oração e recomeço com Deus antes de avançar para os ciclos do Plano Crescer.</p>
+</section>
+<section class="grid two stagger">
+  <article class="card glass-card">
+    <h2>Inclui</h2>
+    <ul class="clean-list">
+      <li>Devocional free</li>
+      <li>Diário básico</li>
+      <li>Prévia da formação profética premium</li>
+      <li>Uma dúvida de demonstração no protótipo</li>
+    </ul>
+    <a class="button primary" href="{{ url_for('upgrade') }}">Conhecer o Plano Crescer</a>
+  </article>
+  <article class="card glass-card">
+    <h2>Conteúdos liberados</h2>
+    {% for item in free_items %}
+      <div class="mini-item">
+        <strong>{{ item.title }}</strong>
+        <span>Semana {{ item.week_number }} · {{ item.content_type }}</span>
+      </div>
+    {% endfor %}
+  </article>
+</section>
+{% endblock %}

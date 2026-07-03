@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Login · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg auth-body{% endblock %}
+{% block content %}
+<section class="auth-shell glass-card">
+  <div class="auth-copy">
+    <p class="eyebrow">Área do Aluno</p>
+    <h1>Entre para acessar sua formação</h1>
+    <p>Use seu e-mail e senha para continuar sua jornada na Escola de Profetas.</p>
+  </div>
+  <form class="auth-form" method="post">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label>E-mail
+      <input type="email" name="email" autocomplete="email" required>
+    </label>
+    <label>Senha
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button class="button primary" type="submit">Entrar</button>
+    <a class="button" href="{{ url_for('cadastro', next=next_url) }}">Ainda não tenho conta</a>
+    <span class="muted">Esqueci minha senha</span>
+  </form>
+</section>
+{% endblock %}

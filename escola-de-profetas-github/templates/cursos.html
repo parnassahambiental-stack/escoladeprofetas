@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Cursos · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg cursos-body courses-showcase-body{% endblock %}
+{% block content %}
+{% set image_map = {
+  'escola-de-profetas': 'img/curso_escola_profetas.png',
+  'como-trabalhar-com-os-anjos': 'img/curso_anjos.png',
+  'implantacao-de-ministerios-profeticos': 'img/curso_ministerios_profeticos.png',
+  'como-montar-uma-sala-profetica': 'img/curso_sala_profetica.png',
+  'como-montar-uma-sala-de-oracao-por-cura': 'img/curso_sala_oracao_cura.png'
+} %}
+
+<section class="courses-store-hero">
+  <div class="courses-store-copy">
+    <h1>Uma Trilha Profética<br>para Cada Estação do Seu Chamado</h1>
+    <p>Treinamentos bíblicos, profundos e práticos para você crescer em discernimento, identidade e serviço profético.</p>
+
+    <div class="courses-feature-strip" aria-label="Benefícios principais">
+      <span><strong>▱</strong> Ensino bíblico<br>profundo e seguro</span>
+      <span><strong>ϟ</strong> Acesso imediato<br>e vitalício</span>
+      <span><strong>♙</strong> Comunidade<br>exclusiva</span>
+      <span><strong>♢</strong> Conteúdo<br>atualizado</span>
+    </div>
+
+    <div class="courses-toolbar" aria-label="Filtro visual de cursos">
+      <label class="course-search">
+        <span>⌕</span>
+        <input type="search" placeholder="Buscar cursos..." aria-label="Buscar cursos">
+      </label>
+      <a class="course-filter active" href="#catalogo">Todos</a>
+      <span class="course-filter muted">Mais relevantes⌄</span>
+    </div>
+  </div>
+  <div class="courses-store-art" aria-hidden="true"></div>
+</section>
+
+<section class="courses-store-grid" id="catalogo">
+  {% for product in products %}
+    {% set relation = user_products.get(product.slug) %}
+    <article class="store-course-card store-course-{{ loop.index }} {% if product.slug == 'escola-de-profetas' %}is-main{% endif %}">
+      <span class="course-rank">{{ loop.index }}</span>
+      <div class="store-course-image" style="background-image: url('{{ url_for('static', filename=image_map.get(product.slug, 'img/bg_dark_gold.png')) }}');"></div>
+      <div class="store-course-content">
+        <div>
+          <h2>{{ product.name }}</h2>
+          <p>{{ product.description }}</p>
+          <ul>
+            {% if product.slug == 'escola-de-profetas' %}
+              <li>Identidade e chamado profético</li>
+              <li>Discernimento e interpretação</li>
+              <li>Ativação, autoridade e governo</li>
+              <li>Maturidade e legado profético</li>
+            {% elif 'anjos' in product.slug %}
+              <li>Anjos como servos de Deus</li>
+              <li>Nunca objeto de culto</li>
+              <li>Atuação e hierarquia angelical</li>
+              <li>Ministérios e aplicações práticas</li>
+            {% elif 'ministerios' in product.slug %}
+              <li>Estrutura, governo e liderança</li>
+              <li>Cultura, valores e visão profética</li>
+              <li>Equipe, funções e fluxo ministerial</li>
+              <li>Processo de maturidade e expansão</li>
+            {% elif 'sala-profetica' in product.slug %}
+              <li>Estrutura física e ambiente espiritual</li>
+              <li>Fluxo, protocolos e discernimento</li>
+              <li>Ferramentas e recursos proféticos</li>
+              <li>Serviço, acolhimento e edificação</li>
+            {% else %}
+              <li>Fundamentos bíblicos da cura</li>
+              <li>Intercessão, cuidado e acompanhamento</li>
+              <li>Equipe, treinamento e fluxo de atendimento</li>
+              <li>Atmosfera de fé, compaixão e unidade</li>
+            {% endif %}
+          </ul>
+        </div>
+
+        <div class="store-course-footer">
+          {% if relation %}
+            <span class="course-owned">{{ relation.status }}</span>
+          {% endif %}
+          {% if product.slug == 'escola-de-profetas' %}
+            <a class="store-buy-button" href="{{ url_for('adquirir_escola_de_profetas') }}">Adquirir curso <span>→</span></a>
+          {% else %}
+            <a class="store-buy-button" href="{{ url_for('comprar_curso', slug=product.slug) }}">Adquirir curso <span>→</span></a>
+          {% endif %}
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+</section>
+
+<section class="courses-trust-strip" aria-label="Confiança e suporte">
+  <span><strong>♢</strong> Ambiente 100% seguro e confiável</span>
+  <span><strong>∞</strong> Acesso vitalício a todo conteúdo</span>
+  <span><strong>♙</strong> Comunidade exclusiva de profetas</span>
+  <span><strong>☏</strong> Suporte humano e pastoral</span>
+  <span class="trust-highlight"><strong>+12.000</strong> vidas transformadas ★★★★★</span>
+</section>
+{% endblock %}

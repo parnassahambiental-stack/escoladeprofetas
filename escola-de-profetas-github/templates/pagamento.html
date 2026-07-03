@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Pagamento · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="checkout-shell glass-card compact">
+  <div class="checkout-summary">
+    <p class="eyebrow">Pagamento seguro</p>
+    <h1>Finalizar aquisição</h1>
+    <article class="checkout-product-card">
+      <span class="pill">{{ order.status }}</span>
+      <h2>{{ order.product_name }}</h2>
+      <p class="course-subtitle">{{ order.subtitle }}</p>
+      <p>Pedido #{{ order.id }} · {{ order.amount_label }}</p>
+      <p>Acesso para: {{ order.user_name }} · {{ order.email }}</p>
+    </article>
+    <p class="checkout-note">
+      Protótipo local: nesta etapa entraria o provedor de pagamento. Ao simular a aprovação,
+      o curso será vinculado automaticamente à Área do Aluno.
+    </p>
+  </div>
+
+  <form class="auth-form checkout-form" method="post">
+    <strong>Ambiente de pagamento</strong>
+    <div class="payment-mock">
+      <span>Cartão, Pix ou boleto</span>
+      <small>Integração futura com gateway de pagamento.</small>
+    </div>
+    <button class="button primary" type="submit">Simular pagamento aprovado</button>
+    <a class="button" href="{{ url_for('cursos') }}">Voltar aos cursos</a>
+  </form>
+</section>
+{% endblock %}

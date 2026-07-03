@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Canal de Dúvidas{% endblock %}
+{% block body_class %}palette-bg{% endblock %}
+{% block content %}
+<section class="section-heading">
+  <p class="eyebrow">Canal de Dúvidas</p>
+  <h1>Perguntas para amadurecer com segurança</h1>
+  <p>As dúvidas são respondidas em até 7 dias, individualmente ou de forma anônima na seção Dúvidas da Semana.</p>
+</section>
+<section class="grid two">
+  <form class="card form-card" method="post">
+    <p class="muted">Uso mensal: {{ sent_this_month }}/{{ limit }}</p>
+    <label>Categoria
+      <select name="category">
+        {% for category in categories %}<option>{{ category }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Dúvida
+      <textarea name="question" rows="6" required></textarea>
+    </label>
+    <label class="check-row">
+      <input type="checkbox" name="share_anonymous">
+      <span>Aceito que minha dúvida possa ser respondida de forma anônima na seção Dúvidas da Semana.</span>
+    </label>
+    <button class="button primary" type="submit">Enviar dúvida</button>
+  </form>
+  <article class="card">
+    <h2>Minhas dúvidas</h2>
+    {% for q in questions %}
+      <div class="mini-item">
+        <strong>{{ q.category }} · {{ q.status }}</strong>
+        <span>{{ q.question }}</span>
+        {% if q.answer %}<p>{{ q.answer }}</p>{% endif %}
+      </div>
+    {% else %}
+      <p class="empty">Nenhuma dúvida enviada ainda.</p>
+    {% endfor %}
+  </article>
+</section>
+{% endblock %}

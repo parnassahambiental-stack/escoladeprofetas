@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Mapa de Correlação Ministerial{% endblock %}
+{% block content %}
+<section class="section-heading">
+  <p class="eyebrow">Efésios 4:11</p>
+  <h1>Mapa de Correlação Ministerial</h1>
+  <p>Este questionário não define seu chamado nem substitui oração, discipulado, maturidade espiritual, confirmação pastoral e frutos práticos. Ele serve como ferramenta de autoconhecimento e percepção espiritual.</p>
+</section>
+<form class="card form-card ministerial-form" method="post">
+  {% for gift, items in questions.items() %}
+    <fieldset>
+      <legend>{{ gift }}</legend>
+      {% for question in items %}
+        <label>{{ question }}
+          <select name="{{ gift }}_{{ loop.index0 }}">
+            <option value="1">1 · Não tem muito a ver comigo</option>
+            <option value="2">2 · Tem pouco a ver comigo</option>
+            <option value="3">3 · Tem alguma relação comigo</option>
+            <option value="4">4 · Tem bastante relação comigo</option>
+            <option value="5">5 · Tem muita relação comigo</option>
+          </select>
+        </label>
+      {% endfor %}
+    </fieldset>
+  {% endfor %}
+  <button class="button primary" type="submit">Calcular mapa</button>
+</form>
+{% if result %}
+  <section class="grid two">
+    <article class="card radar-card soft-glow">
+      <canvas id="radarChart" width="520" height="420" data-scores='{{ result.scores | tojson }}'></canvas>
+    </article>
+    <article class="card">
+      <h2>Principais tendências</h2>
+      <ol class="clean-list numbered">
+        {% for gift in result.top %}<li>{{ gift }} · {{ result.scores[gift].percent }}%</li>{% endfor %}
+      </ol>
+      <p>O gráfico não revela um título, mas aponta tendências. O chamado amadurece com oração, serviço, frutos e confirmação espiritual.</p>
+    </article>
+  </section>
+{% endif %}
+{% endblock %}

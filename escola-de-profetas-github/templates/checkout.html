@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Checkout · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="checkout-shell glass-card compact">
+  <div class="checkout-summary">
+    <p class="eyebrow">Checkout da Escola</p>
+    <h1>Concluir inscrição</h1>
+    <article class="checkout-product-card">
+      <span class="pill">{{ purchase.status }}</span>
+      <h2>{{ course.title }}</h2>
+      <p>{{ course.description }}</p>
+      <p>Valor: R$ {{ '%.2f'|format((course.price_cents or 0) / 100) }}</p>
+      <p>Acesso para: {{ user.name }} · {{ user.email }}</p>
+    </article>
+    <p class="checkout-note">O acesso será liberado automaticamente após a confirmação do pagamento.</p>
+  </div>
+  <div class="auth-form checkout-form">
+    <strong>Pagamento</strong>
+    <div class="payment-mock">
+      <span>Gateway futuro</span>
+      <small>Hotmart, Mercado Pago, Stripe ou outro provedor entrará aqui.</small>
+    </div>
+    <button class="button" type="button">Continuar para pagamento</button>
+    <form method="post" action="{{ url_for('simular_pagamento_escola_de_profetas') }}">
+      <button class="button primary" type="submit">Simular pagamento aprovado</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg home-landing-body{% endblock %}
+{% block content %}
+<section class="home-hero" id="inicio">
+  <div class="home-hero-content">
+    <h1 class="hero-title">Desperte sua<br><span class="gold">identidade</span><br><span class="gold">profética</span></h1>
+    <div class="title-ornament"><span></span><strong>♛</strong><span></span></div>
+    <p class="lead">Uma jornada de formação espiritual para revelar sua identidade, alinhar seu propósito e ativar seu chamado com excelência e autoridade.</p>
+    <div class="actions">
+      <a class="button primary" href="/cursos">♛ Quero Fazer Parte</a>
+      <a class="button" href="#sobre">▶ Conheça a Escola</a>
+    </div>
+  </div>
+</section>
+
+<section class="home-section institutional-strip" id="sobre">
+  <article class="home-card">
+    <span class="home-icon">♜</span>
+    <h2>Sobre a Escola</h2>
+    <p>Conheça nossa missão, valores e o chamado que nos move.</p>
+    <a href="{{ url_for('cursos') }}">Saiba mais →</a>
+  </article>
+  <article class="home-card" id="trilhas">
+    <span class="home-icon">▱</span>
+    <h2>Trilhas de Formação</h2>
+    <p>Formações completas para desenvolver sua identidade profética.</p>
+    <a href="{{ url_for('estacoes') }}">Saiba mais →</a>
+  </article>
+  <article class="home-card" id="cursos">
+    <span class="home-icon">♕</span>
+    <h2>Cursos</h2>
+    <p>Formações e produtos para aprofundar maturidade, governo, oração e serviço.</p>
+    <a href="{{ url_for('cursos') }}">Saiba mais →</a>
+  </article>
+  <article class="home-card" id="comunidade">
+    <span class="home-icon">◎</span>
+    <h2>Comunidade</h2>
+    <p>Conexão, edificação e propósito em um ambiente de fé.</p>
+    <a href="{{ url_for('duvidas') }}">Saiba mais →</a>
+  </article>
+  <article class="home-card">
+    <span class="home-icon">▣</span>
+    <h2>Inscrições</h2>
+    <p>Garanta sua vaga e venha fazer parte desta geração.</p>
+    <a href="{{ url_for('cursos') }}">Saiba mais →</a>
+  </article>
+</section>
+
+<section class="home-section metrics-premium" id="eventos">
+  <div class="home-metric">
+    <span>✦</span>
+    <strong data-count="12850">0</strong>
+    <p>Alunos transformados</p>
+  </div>
+  <div class="home-metric">
+    <span>✦</span>
+    <strong data-count="45">0</strong>
+    <p>Trilhas de formação</p>
+  </div>
+  <div class="home-metric">
+    <span>✦</span>
+    <strong data-count="28">0</strong>
+    <p>Países alcançados</p>
+  </div>
+  <div class="home-metric">
+    <span>✦</span>
+    <strong data-count="150">0</strong>
+    <p>Mentores e líderes</p>
+  </div>
+  <div class="home-metric">
+    <span>✦</span>
+    <strong data-count="8">0</strong>
+    <p>Anos de história</p>
+  </div>
+</section>
+
+<section class="home-final-cta">
+  <span class="cta-crown">♛</span>
+  <div>
+    <h2>Sua jornada profética começa aqui</h2>
+    <p>Dê o próximo passo para viver tudo aquilo que Deus sonhou para você.</p>
+  </div>
+  <a class="button primary" href="{{ url_for('cursos') }}">Quero me inscrever agora →</a>
+</section>
+{% endblock %}

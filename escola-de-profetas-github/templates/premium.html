@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Plano Crescer · Escola de Profetas{% endblock %}
+{% block body_class %}feather-bg{% endblock %}
+{% block content %}
+<section class="section-heading glass-card hero-feather">
+  <p class="eyebrow">Escola de Profetas · Plano Crescer</p>
+  <h1>Ciclos de Formação Profética</h1>
+  <p>O Plano Crescer aprofunda a formação da Escola de Profetas com ciclos semanais, exercícios, oração e acompanhamento privado.</p>
+</section>
+<section class="cycle-grid stagger">
+  <article class="cycle-card glass-card premium-card">
+    <span class="cycle-symbol">L</span>
+    <p class="eyebrow">Ciclo 1</p>
+    <h3>Leão · Governo e Identidade</h3>
+    <p>Coragem, filiação, autoridade espiritual e identidade firmada em Cristo.</p>
+  </article>
+  <article class="cycle-card glass-card premium-card">
+    <span class="cycle-symbol">A</span>
+    <p class="eyebrow">Ciclo 2</p>
+    <h3>Águia · Visão e Discernimento</h3>
+    <p>Altura espiritual, escuta, discernimento bíblico e sobriedade no sentir.</p>
+  </article>
+  <article class="cycle-card glass-card premium-card">
+    <span class="cycle-symbol">H</span>
+    <p class="eyebrow">Ciclo 3</p>
+    <h3>Homem · Caráter e Maturidade</h3>
+    <p>Cura interior, obediência, humanidade tratada e frutos práticos.</p>
+  </article>
+  <article class="cycle-card glass-card premium-card">
+    <span class="cycle-symbol">B</span>
+    <p class="eyebrow">Ciclo 4</p>
+    <h3>Boi · Serviço e Constância</h3>
+    <p>Entrega, fidelidade, serviço ao Corpo e chamado confirmado pelo amor.</p>
+  </article>
+</section>
+<section class="timeline stagger">
+  {% for item in items %}
+    <article class="card compact glass-card premium-card">
+      <span class="pill">Semana {{ item.week_number }}</span>
+      <h2>{{ item.title }}</h2>
+      <p>{{ item.subtitle }}</p>
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

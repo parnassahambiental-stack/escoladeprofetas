@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Área do Aluno · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg student-area-body{% endblock %}
+{% block content %}
+{% set image_map = {
+  'escola-de-profetas': 'img/curso_escola_profetas.png',
+  'como-trabalhar-com-os-anjos': 'img/curso_anjos.png',
+  'implantacao-de-ministerios-profeticos': 'img/curso_ministerios_profeticos.png',
+  'como-montar-uma-sala-profetica': 'img/curso_sala_profetica.png',
+  'como-montar-uma-sala-de-oracao-por-cura': 'img/curso_sala_oracao_cura.png'
+} %}
+
+<section class="student-hero glass-card">
+  <p class="eyebrow">Área do Aluno</p>
+  <h1>Meus cursos liberados</h1>
+  <p>{{ user.name }}, aqui aparecem somente os cursos com pagamento confirmado e acesso ativo na Escola de Profetas.</p>
+  <div class="student-hero-actions">
+    <a class="button primary" href="{{ url_for('cursos') }}">Ver novos cursos</a>
+    <a class="button" href="{{ url_for('duvidas') }}">Canal de dúvidas</a>
+  </div>
+</section>
+
+{% if purchased_products %}
+  <section class="student-course-grid">
+    {% for product in purchased_products %}
+      <article class="student-course-card student-course-{{ product.slug }}">
+        <div class="student-course-image" style="background-image: url('{{ url_for('static', filename=image_map.get(product.slug, 'img/bg_dark_gold.png')) }}');"></div>
+        <div class="student-course-content">
+          <span class="student-access-badge">Acesso liberado</span>
+          <h2>{{ product.title }}</h2>
+          <p class="course-subtitle">Formação liberada</p>
+          <p>{{ product.description }}</p>
+          <div class="student-course-meta">
+            <span>Status: {{ product.enrollment_status }}</span>
+            {% if product.enrollment_updated_at %}<span>Liberado em {{ product.enrollment_updated_at[:10] }}</span>{% endif %}
+          </div>
+          {% if product.slug == 'escola-de-profetas' %}
+            <a class="button primary" href="{{ url_for('estacoes') }}">Acessar curso</a>
+          {% else %}
+            <a class="button primary" href="{{ url_for('cursos') }}">Acessar curso</a>
+          {% endif %}
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+{% else %}
+  <section class="student-empty glass-card">
+    <span>♛</span>
+    <h2>Acesso ainda não liberado</h2>
+    <p>Você ainda não possui uma compra ativa para acessar a Escola de Profetas.</p>
+    <a class="button primary" href="{{ url_for('adquirir_escola_de_profetas') }}">Adquirir acesso</a>
+  </section>
+{% endif %}
+{% endblock %}

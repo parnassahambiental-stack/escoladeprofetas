@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block body_class %}palette-bg{% endblock %}
+{% block content %}
+<section class="lesson-shell glass-card">
+  <p class="eyebrow">{{ lesson.station_title }}</p>
+  <h1>{{ lesson.title }}</h1>
+  <p>{{ lesson.subtitle }}</p>
+
+  <div class="audio-player glass-card">
+    <div>
+      <strong>Player da aula</strong>
+      <p>{{ lesson.audio_duration or 'Áudio demonstrativo' }}</p>
+    </div>
+    <button class="button primary" data-listen-url="{{ url_for('api_lesson_listened', lesson_id=lesson.id) }}">Marcar áudio como ouvido</button>
+  </div>
+
+  <article class="note">
+    <h2>Resumo da aula</h2>
+    <p>{{ lesson.lesson_text }}</p>
+  </article>
+
+  <form class="form-card lesson-complete-form" data-complete-url="{{ url_for('api_lesson_complete', lesson_id=lesson.id) }}">
+    <h2>{{ lesson.exercise_title }}</h2>
+    <p>{{ lesson.exercise_text }}</p>
+    <label>{{ lesson.exercise_prompt }}
+      <textarea name="answer" rows="7" required>{{ progress.exercise_answer or '' }}</textarea>
+    </label>
+    <small>Mínimo de {{ lesson.required_reflection_min_chars }} caracteres.</small>
+    <button class="button primary" type="submit">Concluir exercício e liberar próxima aula</button>
+  </form>
+  <div class="lesson-feedback completion-halo" hidden></div>
+</section>
+{% endblock %}

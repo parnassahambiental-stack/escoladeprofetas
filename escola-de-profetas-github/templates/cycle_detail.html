@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ cycle.name }} · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="course-cycle-page">
+  <header class="course-cycle-hero glass-card">
+    <p class="eyebrow">Ciclo {{ cycle.name }}</p>
+    <h1>{{ cycle.title }}</h1>
+    <blockquote>{{ cycle.phrase }}</blockquote>
+    <p>{{ cycle.description }}</p>
+    {% if not cycle_unlocked %}
+      <p class="locked-cycle-note">Este ciclo faz parte da próxima etapa da formação. Ele ficará disponível após a conclusão do ciclo anterior.</p>
+    {% endif %}
+    <div class="progress-track"><div class="progress-bar progress-animated" style="--progress: {{ progress.percent }}%"></div></div>
+    <small>{{ progress.done }}/{{ progress.total }} conteúdos concluídos · {{ progress.percent }}%</small>
+    <div class="actions">
+      <a class="button" href="{{ url_for('estacoes') }}">Voltar aos ciclos</a>
+    </div>
+  </header>
+
+  <section class="course-content-grid stagger">
+    {% for row in contents %}
+      {% set content = row.content %}
+      <article class="course-content-card glass-card {{ row.status }}">
+        <div class="course-card-top">
+          <span class="pill">Aula {{ content.order }}</span>
+          <span class="course-content-status">{{ row.status.replace('_', ' ') }}</span>
+        </div>
+        <h2>{{ content.title }}</h2>
+        <p>{{ content.description }}</p>
+        <div class="course-assets">
+          <span>{% if row.video_exists %}Vídeo disponível{% else %}Vídeo em breve{% endif %}</span>
+          <span>{% if row.pdf_exists %}PDF disponível{% else %}PDF em breve{% endif %}</span>
+        </div>
+        {% if cycle_unlocked %}
+          <a class="button primary" href="{{ url_for('course_content_detail', cycle_slug=cycle.slug, content_slug=content.slug) }}">Acessar conteúdo</a>
+        {% else %}
+          <button class="button" disabled>Bloqueado</button>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

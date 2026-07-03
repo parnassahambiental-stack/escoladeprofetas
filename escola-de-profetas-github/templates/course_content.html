@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} · {{ cycle.name }}{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="course-lesson-page">
+  <main class="course-lesson-main">
+    <header class="course-lesson-header glass-card">
+      <p class="eyebrow">Ciclo {{ cycle.name }} · {{ cycle.title }}</p>
+      <h1>{{ content.title }}</h1>
+      <p>{{ content.description }}</p>
+    </header>
+
+    <section class="course-video-card glass-card">
+      {% if video_exists %}
+        <video controls preload="metadata" playsinline class="course-video">
+          <source src="{{ url_for('protected_media', kind='videos', filename=content.video_path.split('/')[-1]) }}" type="video/mp4">
+          Seu navegador não suporta vídeo.
+        </video>
+      {% else %}
+        <div class="course-video-placeholder">Vídeo da aula será inserido aqui.</div>
+      {% endif %}
+    </section>
+
+    <section class="course-comment-box glass-card">
+      <h2>Minha reflexão da aula</h2>
+      <p>Use este espaço para registrar o que Deus está trabalhando em você, suas percepções, dúvidas ou decisões práticas.</p>
+      <form method="post" action="{{ url_for('save_course_comment', cycle_slug=cycle.slug, content_slug=content.slug) }}">
+        <textarea name="comment_text" rows="8" placeholder="{{ content.reflection_prompt }}">{{ comment.comment_text if comment else '' }}</textarea>
+        <button class="button primary" type="submit">Salvar reflexão</button>
+      </form>
+    </section>
+  </main>
+
+  <aside class="course-progress-panel glass-card">
+    <div class="course-progress-summary">
+      <span class="course-progress-kicker">Progresso do ciclo</span>
+      <div class="course-progress-heading">
+        <h2>{{ cycle.name }}</h2>
+      </div>
+      <div class="progress-track" aria-label="Progresso do ciclo {{ cycle.name }}">
+        <div class="progress-bar progress-animated" style="--progress: {{ progress.percent }}%"></div>
+        <span class="course-progress-percent">{{ progress.percent }}%</span>
+      </div>
+      <p>{{ progress.done }} de {{ progress.total }} conteúdos concluídos</p>
+    </div>
+    <div class="course-material-card">
+      <strong>Material de apoio</strong>
+      {% if pdf_exists %}
+        <a class="button" href="{{ url_for('protected_media', kind='pdfs', filename=content.pdf_path.split('/')[-1]) }}" target="_blank" rel="noopener">Abrir material de apoio em PDF</a>
+      {% else %}
+        <p>Material de apoio será adicionado em breve.</p>
+      {% endif %}
+    </div>
+    <div class="course-material-card">
+      <strong>Status</strong>
+      <span class="course-content-status">{{ status.replace('_', ' ') }}</span>
+    </div>
+    <form method="post" action="{{ url_for('complete_course_content', cycle_slug=cycle.slug, content_slug=content.slug) }}">
+      <button class="button primary course-complete-button" type="submit">Marcar como concluído</button>
+    </form>
+    <a class="button" href="{{ url_for('cycle_detail', slug=cycle.slug) }}">Voltar ao ciclo</a>
+    {% if next_content %}
+      <a class="button" href="{{ url_for('course_content_detail', cycle_slug=cycle.slug, content_slug=next_content.slug) }}">Próximo conteúdo</a>
+    {% endif %}
+  </aside>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ station.title }} · Escola de Profetas{% endblock %}
+{% block body_class %}palette-bg{% endblock %}
+{% block content %}
+<section class="section-heading glass-card hero-feather">
+  <p class="eyebrow">Estação {{ station.station_order }} de 7</p>
+  <h1>{{ station.title }}</h1>
+  <p>{{ station.description }}</p>
+  <blockquote>{{ station.spiritual_phrase }}</blockquote>
+  <div class="progress-track"><div class="progress-bar progress-animated" style="--progress: {{ progress.percent }}%"></div></div>
+  <p>{{ progress.done }}/{{ progress.total }} aulas concluídas · {{ progress.percent }}%</p>
+</section>
+
+<section class="grid three stagger">
+  {% for lesson in lessons %}
+    <article class="lesson-card glass-card {% if lesson.status in ['liberada', 'audio_ouvido', 'exercicio_iniciado'] %}current unlock-pulse{% endif %} {% if lesson.status == 'bloqueada' %}locked{% endif %} {% if lesson.status == 'concluida' %}completed{% endif %}">
+      <span class="pill">Aula {{ lesson.lesson_order }} · {{ lesson.status.replace('_', ' ') }}</span>
+      <h2>{{ lesson.title }}</h2>
+      <p>{{ lesson.subtitle }}</p>
+      {% if lesson.status != 'bloqueada' %}
+        <a class="button {% if lesson.status != 'concluida' %}primary{% endif %}" href="{{ url_for('lesson_detail', lesson_id=lesson.id) }}">Ouvir e praticar</a>
+      {% else %}
+        <button class="button" disabled>Bloqueada</button>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

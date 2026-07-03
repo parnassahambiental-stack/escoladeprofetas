@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Cadastro · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg auth-body{% endblock %}
+{% block content %}
+<section class="auth-shell glass-card">
+  <div class="auth-copy">
+    <p class="eyebrow">Crie seu acesso</p>
+    <h1>Cadastre-se para continuar sua inscrição</h1>
+    <p>Após o cadastro, você será direcionado para concluir sua inscrição na Escola de Profetas.</p>
+  </div>
+  <form class="auth-form" method="post">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label>Nome
+      <input type="text" name="name" autocomplete="name" required>
+    </label>
+    <label>E-mail
+      <input type="email" name="email" autocomplete="email" required>
+    </label>
+    <label>Senha
+      <input type="password" name="password" autocomplete="new-password" required>
+    </label>
+    <label>Confirmar senha
+      <input type="password" name="confirm_password" autocomplete="new-password" required>
+    </label>
+    <button class="button primary" type="submit">Continuar</button>
+    <a class="button" href="{{ url_for('login', next=next_url) }}">Já tenho conta</a>
+  </form>
+</section>
+{% endblock %}

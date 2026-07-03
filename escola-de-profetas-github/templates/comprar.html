@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Adquirir {{ product.name }} · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg{% endblock %}
+{% block content %}
+<section class="checkout-shell glass-card">
+  <div class="checkout-summary">
+    <p class="eyebrow">Checkout da Escola</p>
+    <h1>Adquirir curso</h1>
+    <article class="checkout-product-card">
+      <span class="pill">{{ product.price_label }}</span>
+      <h2>{{ product.name }}</h2>
+      <p class="course-subtitle">{{ product.subtitle }}</p>
+      <p>{{ product.description }}</p>
+    </article>
+    <p class="checkout-note">
+      Após preencher seus dados, você será direcionada para o pagamento. Quando o pagamento for aprovado,
+      o acesso ao curso será liberado automaticamente na Área do Aluno.
+    </p>
+  </div>
+
+  <form class="auth-form checkout-form" method="post">
+    <strong>Dados para acesso</strong>
+    <label>
+      Nome completo
+      <input type="text" name="name" autocomplete="name" required>
+    </label>
+    <label>
+      E-mail
+      <input type="email" name="email" autocomplete="email" required>
+    </label>
+    <label>
+      Senha para acessar a Área do Aluno
+      <input type="password" name="password" autocomplete="new-password" required>
+    </label>
+    <button class="button primary" type="submit">Ir para pagamento</button>
+    <a class="button" href="{{ url_for('cursos') }}">Voltar aos cursos</a>
+  </form>
+</section>
+{% endblock %}

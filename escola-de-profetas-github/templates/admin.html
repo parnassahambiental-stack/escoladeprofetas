@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Painel da Escola{% endblock %}
+{% block body_class %}palette-bg{% endblock %}
+{% block content %}
+<section class="section-heading">
+  <p class="eyebrow">Painel privado</p>
+  <h1>Painel da Escola</h1>
+  <p>Dados de progresso e presença não aparecem publicamente para outras usuárias.</p>
+</section>
+<section class="stats-grid stagger">
+  <article class="stat card"><span>Online agora</span><strong data-count="{{ cards.online }}">0</strong></article>
+  <article class="stat card"><span>Ativos hoje</span><strong data-count="{{ cards.active_today }}">0</strong></article>
+  <article class="stat card"><span>Em dia</span><strong data-count="{{ cards.on_track }}">0</strong></article>
+  <article class="stat card"><span>Atrasados</span><strong data-count="{{ cards.delayed }}">0</strong></article>
+  <article class="stat card"><span>Orações pendentes</span><strong data-count="{{ cards.prayers }}">0</strong></article>
+  <article class="stat card"><span>Dúvidas pendentes</span><strong data-count="{{ cards.questions }}">0</strong></article>
+  <article class="stat card"><span>Diários compartilhados</span><strong data-count="{{ cards.journals }}">0</strong></article>
+</section>
+
+<section class="card table-card">
+  <h2>Online agora e atividade</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nome</th><th>Plano</th><th>Perfil</th><th>Semana</th><th>Progresso</th><th>Último acesso</th><th>Página</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for row in user_rows %}
+        <tr>
+          <td>{{ row.user.name }}</td>
+          <td>{{ row.user.plan }}</td>
+          <td>{{ row.user.spiritual_profile }}</td>
+          <td>{{ row.week }}</td>
+          <td>{{ row.progress.percent }}%</td>
+          <td>{{ row.user.last_seen_at }}</td>
+          <td>{{ row.user.current_page }}</td>
+          <td><span class="status">{{ row.status }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <h2>Quem está avançando bem</h2>
+    {% for row in user_rows if row.progress.percent >= 70 %}
+      <div class="mini-item"><strong>{{ row.user.name }}</strong><span>Semana {{ row.week }} · {{ row.progress.percent }}% concluído</span></div>
+    {% else %}
+      <p class="empty">Ainda não há usuárias com 70% da semana concluída.</p>
+    {% endfor %}
+  </article>
+  <article class="card">
+    <h2>Precisa de atenção</h2>
+    {% for item in attention %}
+      <div class="mini-item"><strong>{{ item.name }}</strong><span>{{ item.reasons }}</span></div>
+    {% else %}
+      <p class="empty">Nenhum sinal prioritário agora.</p>
+    {% endfor %}
+  </article>
+</section>
+
+<section class="grid two">
+  <article class="card">
+    <h2>Dúvidas novas</h2>
+    <form class="filter-row" method="get">
+      <label>Filtrar por categoria
+        <select name="category" onchange="this.form.submit()">
+          <option value="">Todas</option>
+          {% for category in categories %}
+            <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+    {% for q in questions %}
+      <form class="admin-question" method="post">
+        <input type="hidden" name="question_id" value="{{ q.id }}">
+        <strong>{{ q.name }} · {{ q.category }} · {{ q.status }}</strong>
+        <p>{{ q.question }}</p>
+        <label>Resposta <textarea name="answer" rows="4">{{ q.answer or '' }}</textarea></label>
+        <label>Status
+          <select name="status">
+            {% for status in ['respondida', 'em_analise', 'virou_conteudo'] %}
+              <option {% if q.status == status %}selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="check-row"><input type="checkbox" name="is_sensitive" {% if q.is_sensitive %}checked{% endif %}><span>Marcar como sensível</span></label>
+        <button class="button" type="submit">Salvar resposta</button>
+      </form>
+    {% else %}
+      <p class="empty">Nenhuma dúvida nova.</p>
+    {% endfor %}
+  </article>
+  <article class="card">
+    <h2>Orações e diários</h2>
+    {% for p in prayers %}
+      <div class="mini-item"><strong>{{ p.name }} · {{ p.category }}</strong><span>{{ p.request }}</span></div>
+    {% endfor %}
+    {% for j in journals %}
+      <div class="mini-item"><strong>{{ j.name }} · {{ j.title }}</strong><span>{{ j.content }}</span></div>
+    {% endfor %}
+    {% if not prayers and not journals %}<p class="empty">Nada pendente.</p>{% endif %}
+  </article>
+</section>
+{% endblock %}

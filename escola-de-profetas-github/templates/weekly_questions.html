@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Dúvidas da Semana{% endblock %}
+{% block content %}
+<section class="section-heading">
+  <p class="eyebrow">Respostas anônimas</p>
+  <h1>Dúvidas da Semana</h1>
+  <p>Conteúdo compartilhado de forma anônima para edificação, preservando privacidade.</p>
+</section>
+<section class="timeline stagger">
+  {% for q in answered %}
+    <article class="card">
+      <span class="pill">{{ q.category }}</span>
+      <h2>{{ q.question }}</h2>
+      <p>{{ q.answer }}</p>
+    </article>
+  {% else %}
+    <article class="card empty">A próxima etapa será liberada em breve.</article>
+  {% endfor %}
+</section>
+{% endblock %}
