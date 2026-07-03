@@ -74,11 +74,13 @@ def init_db() -> None:
                 name TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT,
+                password TEXT,
                 plan TEXT NOT NULL DEFAULT 'free',
                 role TEXT NOT NULL DEFAULT 'user',
                 spiritual_profile TEXT,
                 subscription_started_at TEXT,
                 created_at TEXT NOT NULL,
+                updated_at TEXT,
                 last_seen_at TEXT,
                 current_page TEXT
             );
@@ -350,6 +352,8 @@ def column_exists(table: str, column: str) -> bool:
 def migrate_course_tables() -> None:
     if not column_exists("users", "updated_at"):
         execute("ALTER TABLE users ADD COLUMN updated_at TEXT")
+    if not column_exists("users", "password"):
+        execute("ALTER TABLE users ADD COLUMN password TEXT")
     if not column_exists("course_comments", "course_slug"):
         execute("ALTER TABLE course_comments ADD COLUMN course_slug TEXT NOT NULL DEFAULT 'escola-de-profetas'")
     if not column_exists("course_progress", "course_slug"):
@@ -2486,6 +2490,8 @@ def api_ping():
     return jsonify({"ok": True, "last_seen_at": now_str()})
 
 
+init_db()
+
+
 if __name__ == "__main__":
-    init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)

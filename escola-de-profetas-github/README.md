@@ -16,6 +16,16 @@ http://127.0.0.1:5000
 
 O banco SQLite é criado automaticamente no primeiro start com seed inicial.
 
+## Deploy no Render
+
+O app foi ajustado para inicializar o SQLite automaticamente também quando roda com:
+
+```bash
+gunicorn app:app
+```
+
+Não é necessário executar comando manual para criar tabelas. Na importação do `app.py`, o sistema chama `init_db()`, cria as tabelas ausentes e aplica os seeds iniciais quando o banco está vazio.
+
 ## Continuidade em outro notebook
 
 Para continuar este mesmo projeto em outro notebook com Codex, zipar a pasta inteira do projeto incluindo:
