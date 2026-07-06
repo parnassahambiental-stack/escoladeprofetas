@@ -1771,7 +1771,7 @@ def product_interest(slug: str):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    next_url = request.args.get("next") or request.form.get("next") or url_for("aluno")
+    next_url = request.args.get("next") or request.form.get("next") or url_for("index")
     if request.method == "GET" and app.config["PUBLIC_TEST_ACCESS"]:
         test_user = public_test_admin() if next_url.startswith("/admin") else public_test_user()
         if test_user is not None:
