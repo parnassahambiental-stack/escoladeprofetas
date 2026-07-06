@@ -26,6 +26,40 @@ gunicorn app:app
 
 Não é necessário executar comando manual para criar tabelas. Na importação do `app.py`, o sistema chama `init_db()`, cria as tabelas ausentes e aplica os seeds iniciais quando o banco está vazio.
 
+### Modo teste admin
+
+Para testar todas as páginas no Render como admin, configure a variável de ambiente:
+
+```text
+AUTO_LOGIN_ADMIN=1
+```
+
+Com isso, qualquer acesso sem sessão entra automaticamente como `admin@escoladeprofetas.local`.
+
+Para desligar antes de uso real/publico:
+
+```text
+AUTO_LOGIN_ADMIN=0
+```
+
+ou remova essa variável no Render.
+
+### Modo teste sem login para Área do Aluno
+
+Para este protótipo, o app também aceita acesso público temporário às páginas comuns da Área do Aluno e aulas:
+
+```text
+PUBLIC_TEST_ACCESS=1
+```
+
+Esse modo usa uma aluna demo não-admin com acesso ativo à Escola de Profetas. O painel administrativo continua protegido por `role = admin`.
+
+Antes de produção ou venda real, desligue:
+
+```text
+PUBLIC_TEST_ACCESS=0
+```
+
 ## Continuidade em outro notebook
 
 Para continuar este mesmo projeto em outro notebook com Codex, zipar a pasta inteira do projeto incluindo:
@@ -71,7 +105,9 @@ Use o seletor "Trocar" no topo quando estiver logado para alternar entre usuári
 - `/duvidas-da-semana` respostas anônimas
 - `/oracao` e `/diario` são rotas legadas redirecionadas para a Área do Aluno
 - `/admin` painel privado da Escola, protegido por `role = admin`
+- `/admin/dashboard` dashboard administrativo com métricas, online, funil, financeiro, progresso e comentários
 - `/admin/alunos` lista usuários e permite liberar/bloquear acesso manualmente
+- `/admin/aluno/<user_id>` detalhe administrativo de um aluno
 - `/admin/compras` lista compras e permite marcar como paga para teste
 - `/api/ping` presença online
 - `/mapa-ministerial` questionário baseado em Efésios 4:11 com radar em Canvas
@@ -88,6 +124,40 @@ Use o seletor "Trocar" no topo quando estiver logado para alternar entre usuári
 - `/api/journey/progress` progresso JSON da formação por estações
 - `/admin/estacoes` painel privado da Escola para acompanhar progresso por estação
 - `/admin/comentarios` painel privado da Escola para acompanhar reflexões dos alunos nos cursos
+- `/admin/relatorios` central de relatórios CSV
+- `/admin/exportar/alunos` exporta alunos em CSV
+- `/admin/exportar/compras` exporta compras em CSV
+- `/admin/exportar/progresso` exporta progresso em CSV
+- `/admin/exportar/comentarios` exporta comentários em CSV
+
+## Painel administrativo
+
+O painel admin fica em:
+
+```text
+http://127.0.0.1:5000/admin/dashboard
+```
+
+Login de teste:
+
+```text
+admin@escoladeprofetas.local
+admin123
+```
+
+Apenas usuários com `role = admin` veem o link "Painel Admin" no menu. Usuários comuns não veem o link e, se tentarem acessar a URL manualmente, são redirecionados para `/aluno` com aviso de acesso restrito.
+
+O painel mostra:
+
+- usuários cadastrados e online;
+- alunos com e sem acesso ativo;
+- compras pagas, pendentes, canceladas e reembolsadas;
+- receita total, mensal, últimos 7 dias e ticket médio;
+- funil dos alunos;
+- status por curso e progresso por ciclo;
+- progresso dos alunos;
+- comentários/reflexões recentes;
+- exportações CSV.
 
 ## Implementado
 

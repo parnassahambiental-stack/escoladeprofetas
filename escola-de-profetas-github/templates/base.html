@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Escola de Profetas{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='shofar-enquadrado') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='teste-liberado-v1') }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <div class="ambient-light"></div>
@@ -41,11 +41,8 @@
       <a href="{{ url_for('index') }}#comunidade">Comunidade</a>
       <a href="{{ url_for('index') }}#contato">Contato</a>
       <a class="student-area" href="{{ url_for('aluno') }}">Área do Aluno</a>
-      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
-      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_alunos') }}">Alunos</a>{% endif %}
-      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_compras') }}">Compras</a>{% endif %}
-      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_stations') }}">Admin Ciclos</a>{% endif %}
-      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_course_comments') }}">Comentários</a>{% endif %}
+      {% if public_test_access or (user and user.role == 'admin') %}<a href="{{ url_for('admin_dashboard') }}">Dashboard Admin</a>{% endif %}
+      {% if user %}<a href="{{ url_for('logout') }}">Sair</a>{% endif %}
     </nav>
   </header>
 
@@ -96,14 +93,11 @@
   </footer>
   <nav class="mobile-tabbar" aria-label="Navegação principal">
     <a href="{{ url_for('index') }}">Início</a>
-    <a href="{{ url_for('estacoes') }}">Ciclos</a>
-    <a href="{{ url_for('duvidas') }}">Dúvidas</a>
+    <a href="{{ url_for('index') }}#sobre">Sobre</a>
+    <a href="{{ url_for('index') }}#trilhas">Trilhas</a>
+    <a href="{{ url_for('index') }}#comunidade">Comunidade</a>
     <a href="{{ url_for('cursos') }}">Cursos</a>
-    {% if user and user.role == 'admin' %}
-      <a href="{{ url_for('admin') }}">Admin</a>
-    {% else %}
-      <a href="{{ url_for('mapa_ministerial') }}">Mapa</a>
-    {% endif %}
+    <a href="{{ url_for('aluno') }}">Aluno</a>
   </nav>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block scripts %}{% endblock %}

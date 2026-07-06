@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import csv
+import io
 import math
+import os
 import sqlite3
 from datetime import datetime, timedelta
+from functools import wraps
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Flask, Response, abort, flash, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -18,6 +22,8 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "mentoria-profetica-prototipo-local"
 app.config["WEBHOOK_TOKEN"] = "webhook-prototipo-local"
+app.config["AUTO_LOGIN_ADMIN"] = os.environ.get("AUTO_LOGIN_ADMIN", "0").lower() in {"1", "true", "yes", "on"}
+app.config["PUBLIC_TEST_ACCESS"] = os.environ.get("PUBLIC_TEST_ACCESS", "1").lower() in {"1", "true", "yes", "on"}
 
 
 def now() -> datetime:
@@ -328,6 +334,17 @@ def init_db() -> None:
                 FOREIGN KEY(user_id) REFERENCES users(id),
                 FOREIGN KEY(station_id) REFERENCES spiritual_stations(id),
                 FOREIGN KEY(lesson_id) REFERENCES station_lessons(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS user_presence (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                current_page TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(user_id),
+                FOREIGN KEY(user_id) REFERENCES users(id)
             );
 
             """
@@ -1186,8 +1203,33 @@ def current_user() -> sqlite3.Row | None:
     return query_one("SELECT * FROM users WHERE id = ?", (user_id,)) if user_id else None
 
 
+def public_test_user() -> sqlite3.Row | None:
+    user = query_one("SELECT * FROM users WHERE email = ? AND role != 'admin'", ("premium@mentoria.local",))
+    if user is None:
+        user = query_one("SELECT * FROM users WHERE role != 'admin' ORDER BY id LIMIT 1")
+    if user is None:
+        return None
+    course = get_course_by_slug("escola-de-profetas")
+    if course:
+        activate_enrollment(user["id"], course["id"])
+        assign_user_product(user["id"], "escola-de-profetas", "ativo", "Acesso público temporário para testes.")
+    return query_one("SELECT * FROM users WHERE id = ?", (user["id"],))
+
+
+def public_test_admin() -> sqlite3.Row | None:
+    admin_user = query_one("SELECT * FROM users WHERE email = ?", ("admin@escoladeprofetas.local",))
+    if admin_user is None:
+        admin_user = query_one("SELECT * FROM users WHERE role = 'admin' ORDER BY id LIMIT 1")
+    return admin_user
+
+
 def require_login(next_url: str | None = None):
     user = current_user()
+    if user is None and app.config["PUBLIC_TEST_ACCESS"] and not request.path.startswith("/admin"):
+        user = public_test_user()
+        if user is not None:
+            session["user_id"] = user["id"]
+            return None
     if user is None:
         return redirect(url_for("login", next=next_url or request.path))
     return None
@@ -1278,6 +1320,125 @@ def require_admin() -> sqlite3.Row:
         flash("Acesso restrito ao painel privado da Escola.", "warning")
         return None
     return user
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user = current_user()
+        if app.config["PUBLIC_TEST_ACCESS"] and (user is None or user["role"] != "admin"):
+            admin_user = public_test_admin()
+            if admin_user is not None:
+                session["user_id"] = admin_user["id"]
+                user = admin_user
+        if user is None:
+            return redirect(url_for("login", next=request.path))
+        if user["role"] != "admin":
+            flash("Acesso restrito.", "warning")
+            return redirect(url_for("aluno"))
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+def money_from_cents(value: int | None) -> str:
+    amount = (value or 0) / 100
+    return f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def update_presence(user_id: int, current_page: str) -> None:
+    timestamp = now_str()
+    execute(
+        "UPDATE users SET last_seen_at = ?, current_page = ?, updated_at = COALESCE(updated_at, ?) WHERE id = ?",
+        (timestamp, current_page, timestamp, user_id),
+    )
+    execute(
+        """
+        INSERT INTO user_presence (user_id, last_seen_at, current_page, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            last_seen_at = excluded.last_seen_at,
+            current_page = excluded.current_page,
+            updated_at = excluded.updated_at
+        """,
+        (user_id, timestamp, current_page, timestamp, timestamp),
+    )
+
+
+def online_cutoff() -> str:
+    return (now() - timedelta(minutes=5)).strftime(DATE_FORMAT)
+
+
+def count_online_users() -> int:
+    row = query_one(
+        """
+        SELECT COUNT(*) AS total
+        FROM users
+        WHERE COALESCE(last_seen_at, '') >= ?
+        """,
+        (online_cutoff(),),
+    )
+    return row["total"] if row else 0
+
+
+def get_online_users() -> list[sqlite3.Row]:
+    return query_all(
+        """
+        SELECT u.*,
+               GROUP_CONCAT(c.title, ', ') AS active_courses
+        FROM users u
+        LEFT JOIN enrollments e ON e.user_id = u.id AND e.status = 'active'
+        LEFT JOIN courses c ON c.id = e.course_id
+        WHERE COALESCE(u.last_seen_at, '') >= ?
+        GROUP BY u.id
+        ORDER BY u.last_seen_at DESC
+        """,
+        (online_cutoff(),),
+    )
+
+
+def calculate_cycle_progress(user_id: int, course_slug: str, cycle_slug: str) -> dict[str, int]:
+    if course_slug != "escola-de-profetas":
+        return {"done": 0, "total": 0, "percent": 0}
+    return get_course_cycle_progress(user_id, cycle_slug)
+
+
+def calculate_user_course_progress(user_id: int, course_slug: str) -> dict[str, int]:
+    if course_slug != "escola-de-profetas":
+        return {"done": 0, "total": 0, "percent": 0}
+    total = sum(len(cycle["contents"]) for cycle in COURSE_CYCLES.values())
+    done_row = query_one(
+        """
+        SELECT COUNT(*) AS total
+        FROM course_progress
+        WHERE user_id = ?
+          AND course_slug = ?
+          AND status = 'concluido'
+        """,
+        (user_id, course_slug),
+    )
+    done = done_row["total"] if done_row else 0
+    return {"done": done, "total": total, "percent": int((done / total) * 100) if total else 0}
+
+
+def current_cycle_for_user(user_id: int) -> str:
+    for cycle in COURSE_CYCLES.values():
+        progress = calculate_cycle_progress(user_id, "escola-de-profetas", cycle["slug"])
+        if progress["percent"] < 100:
+            return cycle["name"]
+    return "Concluído"
+
+
+def csv_response(filename: str, headers: list[str], rows: list[list[Any]]) -> Response:
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
 
 
 def log_station_activity(user_id: int, action: str, station_id: int | None = None, lesson_id: int | None = None, details: str | None = None) -> None:
@@ -1502,16 +1663,40 @@ def cycle_view_models(user_id: int) -> list[dict[str, Any]]:
 
 
 @app.before_request
+def auto_login_admin_for_testing() -> None:
+    if not app.config["AUTO_LOGIN_ADMIN"]:
+        return
+    if request.endpoint in {"static"}:
+        return
+    if session.get("user_id"):
+        return
+    admin_user = public_test_admin()
+    if admin_user is not None:
+        session["user_id"] = admin_user["id"]
+
+
+@app.before_request
+def auto_login_public_test_access() -> None:
+    if not app.config["PUBLIC_TEST_ACCESS"]:
+        return
+    if request.endpoint in {"static"} or request.path.startswith("/admin"):
+        return
+    current = current_user()
+    if current is not None and current["role"] == "admin":
+        return
+    user = public_test_user()
+    if user is not None:
+        session["user_id"] = user["id"]
+
+
+@app.before_request
 def track_page() -> None:
     if request.endpoint in {"static", "api_ping"}:
         return
     user = current_user()
     if user is None:
         return
-    execute(
-        "UPDATE users SET last_seen_at = ?, current_page = ? WHERE id = ?",
-        (now_str(), request.path, user["id"]),
-    )
+    update_presence(user["id"], request.path)
 
 
 @app.context_processor
@@ -1543,6 +1728,7 @@ def inject_context() -> dict[str, Any]:
     return {
         "user": user,
         "demo_users": users,
+        "public_test_access": app.config["PUBLIC_TEST_ACCESS"],
         "current_week": get_current_week(user) if user is not None else 1,
         "school_current_station": school_current_station,
         "school_journey": school_journey,
@@ -1586,6 +1772,11 @@ def product_interest(slug: str):
 @app.route("/login", methods=["GET", "POST"])
 def login():
     next_url = request.args.get("next") or request.form.get("next") or url_for("aluno")
+    if request.method == "GET" and app.config["PUBLIC_TEST_ACCESS"]:
+        test_user = public_test_admin() if next_url.startswith("/admin") else public_test_user()
+        if test_user is not None:
+            session["user_id"] = test_user["id"]
+            return redirect(next_url)
     if current_user() is not None and request.method == "GET":
         return redirect(next_url)
     if request.method == "POST":
@@ -2252,11 +2443,227 @@ def api_journey_progress():
     return jsonify(get_journey_progress(user["id"]))
 
 
+
+def admin_dashboard_context() -> dict[str, Any]:
+    month_start = now().replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime(DATE_FORMAT)
+    week_start = (now() - timedelta(days=7)).strftime(DATE_FORMAT)
+    total_users = query_one("SELECT COUNT(*) AS total FROM users")["total"]
+    online_total = count_online_users()
+    active_students = query_one("SELECT COUNT(DISTINCT user_id) AS total FROM enrollments WHERE status = 'active'")["total"]
+    without_access = query_one(
+        """
+        SELECT COUNT(*) AS total
+        FROM users u
+        WHERE u.role != 'admin'
+          AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = u.id AND e.status = 'active')
+        """
+    )["total"]
+    paid_purchases = query_one("SELECT COUNT(*) AS total FROM purchases WHERE status = 'paid'")["total"]
+    total_revenue = query_one("SELECT COALESCE(SUM(amount_cents), 0) AS total FROM purchases WHERE status = 'paid'")["total"]
+    month_revenue = query_one("SELECT COALESCE(SUM(amount_cents), 0) AS total FROM purchases WHERE status = 'paid' AND confirmed_at >= ?", (month_start,))["total"]
+    week_revenue = query_one("SELECT COALESCE(SUM(amount_cents), 0) AS total FROM purchases WHERE status = 'paid' AND confirmed_at >= ?", (week_start,))["total"]
+    pending_purchases = query_one("SELECT COUNT(*) AS total FROM purchases WHERE status = 'pending'")["total"]
+    canceled_purchases = query_one("SELECT COUNT(*) AS total FROM purchases WHERE status IN ('canceled', 'refunded')")["total"]
+    recent_comments_count = query_one("SELECT COUNT(*) AS total FROM course_comments WHERE created_at >= ?", (week_start,))["total"]
+    average_ticket = int(total_revenue / paid_purchases) if paid_purchases else 0
+
+    online_users = get_online_users()
+    funnel = build_admin_funnel(total_users)
+    course_status = build_course_status_rows()
+    cycle_status = build_cycle_status_rows()
+    finance_rows = get_admin_purchase_rows(limit=8)
+    progress_rows = get_admin_progress_rows(limit=10)
+    recent_comments = get_admin_comment_rows(limit=6)
+
+    cards = [
+        {"label": "Usuários cadastrados", "value": total_users, "hint": "Total no banco"},
+        {"label": "Online agora", "value": online_total, "hint": "Últimos 5 minutos"},
+        {"label": "Alunos com acesso ativo", "value": active_students, "hint": "Matrículas active"},
+        {"label": "Sem acesso ativo", "value": without_access, "hint": "Alunos sem matrícula"},
+        {"label": "Vendas confirmadas", "value": paid_purchases, "hint": "Compras paid"},
+        {"label": "Receita total", "value": money_from_cents(total_revenue), "hint": "Compras pagas"},
+        {"label": "Receita do mês", "value": money_from_cents(month_revenue), "hint": "Mês atual"},
+        {"label": "Compras pendentes", "value": pending_purchases, "hint": "Status pending"},
+        {"label": "Canceladas/reembolsadas", "value": canceled_purchases, "hint": "Status canceled/refunded"},
+        {"label": "Comentários recentes", "value": recent_comments_count, "hint": "Últimos 7 dias"},
+    ]
+    finance = {
+        "total": money_from_cents(total_revenue),
+        "month": money_from_cents(month_revenue),
+        "week": money_from_cents(week_revenue),
+        "ticket": money_from_cents(average_ticket),
+        "paid": paid_purchases,
+        "pending": pending_purchases,
+        "canceled": query_one("SELECT COUNT(*) AS total FROM purchases WHERE status = 'canceled'")["total"],
+        "refunded": query_one("SELECT COUNT(*) AS total FROM purchases WHERE status = 'refunded'")["total"],
+    }
+    return {
+        "cards": cards,
+        "online_users": online_users,
+        "funnel": funnel,
+        "course_status": course_status,
+        "cycle_status": cycle_status,
+        "finance": finance,
+        "finance_rows": finance_rows,
+        "progress_rows": progress_rows,
+        "recent_comments": recent_comments,
+    }
+
+
+def build_admin_funnel(total_users: int) -> list[dict[str, Any]]:
+    rows = [
+        ("Visitantes cadastrados", total_users),
+        ("Compra pendente", query_one("SELECT COUNT(DISTINCT user_id) AS total FROM purchases WHERE status = 'pending'")["total"]),
+        ("Pagamento confirmado", query_one("SELECT COUNT(DISTINCT user_id) AS total FROM purchases WHERE status = 'paid'")["total"]),
+        ("Curso liberado", query_one("SELECT COUNT(DISTINCT user_id) AS total FROM enrollments WHERE status = 'active'")["total"]),
+        ("Iniciaram o curso", query_one("SELECT COUNT(DISTINCT user_id) AS total FROM course_progress WHERE status IN ('em_andamento', 'concluido')")["total"]),
+        ("Concluíram 1 aula", query_one("SELECT COUNT(DISTINCT user_id) AS total FROM course_progress WHERE status = 'concluido'")["total"]),
+    ]
+    completed_all = 0
+    for user_row in query_all("SELECT id FROM users WHERE role != 'admin'"):
+        progress = calculate_user_course_progress(user_row["id"], "escola-de-profetas")
+        if progress["total"] and progress["percent"] == 100:
+            completed_all += 1
+    rows.append(("Concluíram todos os conteúdos", completed_all))
+    base = total_users or 1
+    return [{"label": label, "value": value, "percent": int((value / base) * 100)} for label, value in rows]
+
+
+def build_course_status_rows() -> list[dict[str, Any]]:
+    rows = []
+    for course in query_all("SELECT * FROM courses ORDER BY title"):
+        active = query_one("SELECT COUNT(*) AS total FROM enrollments WHERE course_id = ? AND status = 'active'", (course["id"],))["total"]
+        blocked = query_one("SELECT COUNT(*) AS total FROM enrollments WHERE course_id = ? AND status != 'active'", (course["id"],))["total"]
+        pending = query_one("SELECT COUNT(*) AS total FROM purchases WHERE course_id = ? AND status = 'pending'", (course["id"],))["total"]
+        paid = query_one("SELECT COUNT(*) AS total FROM purchases WHERE course_id = ? AND status = 'paid'", (course["id"],))["total"]
+        revenue = query_one("SELECT COALESCE(SUM(amount_cents), 0) AS total FROM purchases WHERE course_id = ? AND status = 'paid'", (course["id"],))["total"]
+        progress_values = [calculate_user_course_progress(row["user_id"], course["slug"])["percent"] for row in query_all("SELECT user_id FROM enrollments WHERE course_id = ? AND status = 'active'", (course["id"],))]
+        average_progress = int(sum(progress_values) / len(progress_values)) if progress_values else 0
+        rows.append({"course": course, "active": active, "blocked": blocked, "pending": pending, "paid": paid, "revenue": money_from_cents(revenue), "average_progress": average_progress})
+    return rows
+
+
+def build_cycle_status_rows() -> list[dict[str, Any]]:
+    active_users = query_all(
+        """
+        SELECT DISTINCT e.user_id
+        FROM enrollments e
+        JOIN courses c ON c.id = e.course_id
+        WHERE c.slug = 'escola-de-profetas' AND e.status = 'active'
+        """
+    )
+    rows = []
+    for cycle in COURSE_CYCLES.values():
+        progress_values = []
+        started = one_done = completed = 0
+        for user_row in active_users:
+            progress = calculate_cycle_progress(user_row["user_id"], "escola-de-profetas", cycle["slug"])
+            progress_values.append(progress["percent"])
+            started += int(query_one("SELECT COUNT(*) AS total FROM course_progress WHERE user_id = ? AND cycle_slug = ?", (user_row["user_id"], cycle["slug"]))["total"] > 0)
+            one_done += int(progress["done"] > 0)
+            completed += int(progress["total"] > 0 and progress["done"] == progress["total"])
+        average = int(sum(progress_values) / len(progress_values)) if progress_values else 0
+        rows.append({"cycle": cycle, "started": started, "one_done": one_done, "completed": completed, "average": average})
+    return rows
+
+
+def get_admin_purchase_rows(limit: int | None = None) -> list[sqlite3.Row]:
+    limit_sql = f"LIMIT {int(limit)}" if limit else ""
+    return query_all(
+        f"""
+        SELECT p.*, u.name AS user_name, u.email, c.title AS course_title, c.slug AS course_slug
+        FROM purchases p
+        JOIN users u ON u.id = p.user_id
+        JOIN courses c ON c.id = p.course_id
+        ORDER BY p.created_at DESC
+        {limit_sql}
+        """
+    )
+
+
+def get_admin_progress_rows(limit: int | None = None) -> list[dict[str, Any]]:
+    users = query_all(
+        """
+        SELECT u.*, e.status AS enrollment_status, c.slug AS course_slug, c.title AS course_title
+        FROM users u
+        LEFT JOIN enrollments e ON e.user_id = u.id
+        LEFT JOIN courses c ON c.id = e.course_id
+        WHERE u.role != 'admin'
+        ORDER BY COALESCE(u.last_seen_at, u.created_at) DESC
+        """
+    )
+    rows = []
+    for user_row in users:
+        course_slug = user_row["course_slug"] or "escola-de-profetas"
+        progress = calculate_user_course_progress(user_row["id"], course_slug)
+        status = "sem compra ativa"
+        if user_row["enrollment_status"] == "active":
+            status = "concluiu" if progress["percent"] == 100 else ("em andamento" if progress["done"] else "não iniciou")
+        elif user_row["enrollment_status"]:
+            status = "acesso bloqueado"
+        rows.append({"user": user_row, "course": user_row["course_title"] or "Escola de Profetas", "cycle": current_cycle_for_user(user_row["id"]), "progress": progress, "status": status})
+    return rows[:limit] if limit else rows
+
+
+def get_admin_comment_rows(limit: int | None = None, cycle_filter: str = "", user_filter: str = "") -> list[dict[str, Any]]:
+    conditions = []
+    params: list[Any] = []
+    if cycle_filter in COURSE_CYCLES:
+        conditions.append("c.cycle_slug = ?")
+        params.append(cycle_filter)
+    if user_filter:
+        conditions.append("(u.name LIKE ? OR u.email LIKE ?)")
+        params.extend([f"%{user_filter}%", f"%{user_filter}%"])
+    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+    limit_sql = f"LIMIT {int(limit)}" if limit else ""
+    comments = query_all(
+        f"""
+        SELECT c.*, u.name AS user_name, u.email, p.status
+        FROM course_comments c
+        JOIN users u ON u.id = c.user_id
+        LEFT JOIN course_progress p
++          ON p.user_id = c.user_id AND p.cycle_slug = c.cycle_slug AND p.content_slug = c.content_slug
+        {where}
+        ORDER BY c.updated_at DESC
+        {limit_sql}
+        """.replace("\n+", "\n"),
+        tuple(params),
+    )
+    rows = []
+    for row in comments:
+        rows.append({"row": row, "cycle": course_cycle_by_slug(row["cycle_slug"]), "content": course_content_by_slug(row["cycle_slug"], row["content_slug"])})
+    return rows
+
+
+@app.route("/admin")
+@admin_required
+def admin():
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/dashboard", methods=["GET", "POST"])
+@admin_required
+def admin_dashboard():
+    if request.method == "POST":
+        question_id = int(request.form.get("question_id", "0"))
+        answer = request.form.get("answer", "").strip()
+        status = request.form.get("status", "respondida")
+        sensitive = 1 if request.form.get("is_sensitive") else 0
+        if question_id and answer:
+            execute(
+                "UPDATE questions_channel SET answer = ?, status = ?, is_sensitive = ?, answered_at = ? WHERE id = ?",
+                (answer, status, sensitive, now_str(), question_id),
+            )
+            flash("Dúvida atualizada no painel privado.", "success")
+            return redirect(url_for("admin_dashboard"))
+    update_presence(current_user()["id"], request.path)
+    log_activity("abriu painel admin")
+    return render_template("admin/dashboard.html", **admin_dashboard_context())
+
+
 @app.route("/admin/estacoes")
+@admin_required
 def admin_stations():
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("index"))
     rows = []
     for user_row in query_all("SELECT * FROM users ORDER BY name"):
         initialize_station_progress_for_user(user_row["id"])
@@ -2276,72 +2683,182 @@ def admin_stations():
             )
         last_done = query_one("SELECT MAX(completed_at) AS last_done FROM user_lesson_progress WHERE user_id = ? AND completed_at IS NOT NULL", (user_row["id"],))["last_done"]
         station_progress = get_station_progress(user_row["id"], current["id"]) if current else {"percent": 0}
-        started_without_exercise = current and query_one(
-            """
-            SELECT COUNT(*) AS total FROM user_lesson_progress p
-            JOIN station_lessons l ON l.id = p.lesson_id
-            WHERE p.user_id = ? AND l.station_id = ? AND p.status = 'concluida'
-            """,
-            (user_row["id"], current["id"]),
-        )["total"] == 0
-        status = "Precisa de atenção" if started_without_exercise else "Em dia"
+        status = "Em dia"
         if last_done:
             status = "Em dia" if now() - parse_dt(last_done) <= timedelta(days=7) else "Parado"
         if station_progress["percent"] >= 70:
             status = "Avançando bem"
-        rows.append(
-            {
-                "user": user_row,
-                "current": current,
-                "lesson": current_lesson,
-                "journey": get_journey_progress(user_row["id"]),
-                "station_progress": station_progress,
-                "last_done": last_done or "Sem conclusão",
-                "status": status,
-            }
-        )
+        rows.append({"user": user_row, "current": current, "lesson": current_lesson, "journey": get_journey_progress(user_row["id"]), "station_progress": station_progress, "last_done": last_done or "Sem conclusão", "status": status})
     return render_template("admin_stations.html", rows=rows)
 
 
 @app.route("/admin/comentarios")
+@admin_required
 def admin_course_comments():
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("index"))
     cycle_filter = request.args.get("cycle") or ""
-    params: tuple[Any, ...] = ()
-    where = ""
-    if cycle_filter in COURSE_CYCLES:
-        where = "WHERE c.cycle_slug = ?"
-        params = (cycle_filter,)
-    comments = query_all(
-        f"""
-        SELECT c.*, u.name AS user_name, u.email, p.status
-        FROM course_comments c
-        JOIN users u ON u.id = c.user_id
-        LEFT JOIN course_progress p
-          ON p.user_id = c.user_id AND p.cycle_slug = c.cycle_slug AND p.content_slug = c.content_slug
-        {where}
-        ORDER BY c.updated_at DESC
-        """,
-        params,
-    )
-    rows = []
-    for row in comments:
-        cycle = course_cycle_by_slug(row["cycle_slug"])
-        content = course_content_by_slug(row["cycle_slug"], row["content_slug"])
-        rows.append({"row": row, "cycle": cycle, "content": content})
+    user_filter = request.args.get("q") or ""
+    rows = get_admin_comment_rows(cycle_filter=cycle_filter, user_filter=user_filter)
     log_activity("abriu admin comentarios")
-    return render_template("admin_comments.html", rows=rows, cycles=COURSE_CYCLES.values(), cycle_filter=cycle_filter)
+    return render_template("admin/comentarios.html", rows=rows, cycles=COURSE_CYCLES.values(), cycle_filter=cycle_filter, user_filter=user_filter)
 
 
 @app.route("/admin/alunos")
+@admin_required
 def admin_alunos():
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("login", next=request.path))
+    q = (request.args.get("q") or "").strip()
+    status_filter = request.args.get("status") or ""
+    conditions = []
+    params: list[Any] = []
+    if q:
+        conditions.append("(u.name LIKE ? OR u.email LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%"])
+    if status_filter == "admin":
+        conditions.append("u.role = 'admin'")
+    elif status_filter == "student":
+        conditions.append("u.role != 'admin'")
+    elif status_filter == "online":
+        conditions.append("COALESCE(u.last_seen_at, '') >= ?")
+        params.append(online_cutoff())
+    elif status_filter == "offline":
+        conditions.append("(u.last_seen_at IS NULL OR u.last_seen_at < ?)")
+        params.append(online_cutoff())
+    elif status_filter == "com_acesso":
+        conditions.append("EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = u.id AND e.status = 'active')")
+    elif status_filter == "sem_acesso":
+        conditions.append("NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.user_id = u.id AND e.status = 'active')")
+    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+    users = query_all(f"SELECT u.* FROM users u {where} ORDER BY u.created_at DESC", tuple(params))
     rows = []
-    for user_row in query_all("SELECT * FROM users ORDER BY created_at DESC"):
+    for user_row in users:
+        courses = query_all(
+            """
+            SELECT c.title, e.status
+            FROM enrollments e
+            JOIN courses c ON c.id = e.course_id
+            WHERE e.user_id = ?
+            ORDER BY c.title
+            """,
+            (user_row["id"],),
+        )
+        active_courses = ", ".join(row["title"] for row in courses if row["status"] == "active")
+        is_online = bool(user_row["last_seen_at"] and user_row["last_seen_at"] >= online_cutoff())
+        rows.append({"user": user_row, "courses": courses, "active_courses": active_courses, "is_online": is_online, "progress": calculate_user_course_progress(user_row["id"], "escola-de-profetas")})
+    return render_template("admin/alunos.html", rows=rows, q=q, status_filter=status_filter)
+
+
+@app.route("/admin/aluno/<int:user_id>")
+@admin_required
+def admin_aluno_detalhe(user_id: int):
+    user_row = query_one("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not user_row:
+        abort(404)
+    purchases = query_all(
+        """
+        SELECT p.*, c.title AS course_title
+        FROM purchases p
+        JOIN courses c ON c.id = p.course_id
+        WHERE p.user_id = ?
+        ORDER BY p.created_at DESC
+        """,
+        (user_id,),
+    )
+    enrollments = query_all(
+        """
+        SELECT e.*, c.title AS course_title, c.slug AS course_slug
+        FROM enrollments e
+        JOIN courses c ON c.id = e.course_id
+        WHERE e.user_id = ?
+        ORDER BY e.updated_at DESC
+        """,
+        (user_id,),
+    )
+    cycle_rows = [{"cycle": cycle, "progress": calculate_cycle_progress(user_id, "escola-de-profetas", cycle["slug"])} for cycle in COURSE_CYCLES.values()]
+    comments = get_admin_comment_rows(user_filter=user_row["email"])
+    return render_template("admin/aluno_detalhe.html", user_row=user_row, purchases=purchases, enrollments=enrollments, cycle_rows=cycle_rows, comments=comments)
+
+
+@app.post("/admin/alunos/<int:user_id>/liberar")
+@app.post("/admin/aluno/<int:user_id>/liberar-acesso")
+@admin_required
+def admin_liberar_acesso(user_id: int):
+    course = get_course_by_slug("escola-de-profetas")
+    activate_enrollment(user_id, course["id"])
+    flash("Acesso liberado manualmente.", "success")
+    return redirect(request.referrer or url_for("admin_alunos"))
+
+
+@app.post("/admin/alunos/<int:user_id>/bloquear")
+@app.post("/admin/aluno/<int:user_id>/bloquear-acesso")
+@admin_required
+def admin_bloquear_acesso(user_id: int):
+    course = get_course_by_slug("escola-de-profetas")
+    execute("UPDATE enrollments SET status = 'blocked', updated_at = ? WHERE user_id = ? AND course_id = ?", (now_str(), user_id, course["id"]))
+    flash("Acesso bloqueado.", "success")
+    return redirect(request.referrer or url_for("admin_alunos"))
+
+
+@app.route("/admin/compras")
+@admin_required
+def admin_compras():
+    status_filter = request.args.get("status") or ""
+    course_filter = request.args.get("course") or ""
+    conditions = []
+    params: list[Any] = []
+    if status_filter:
+        conditions.append("p.status = ?")
+        params.append(status_filter)
+    if course_filter:
+        conditions.append("c.slug = ?")
+        params.append(course_filter)
+    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+    rows = query_all(
+        f"""
+        SELECT p.*, u.name AS user_name, u.email, c.title AS course_title, c.slug AS course_slug
+        FROM purchases p
+        JOIN users u ON u.id = p.user_id
+        JOIN courses c ON c.id = p.course_id
+        {where}
+        ORDER BY p.created_at DESC
+        """,
+        tuple(params),
+    )
+    courses = query_all("SELECT * FROM courses ORDER BY title")
+    return render_template("admin/compras.html", rows=rows, courses=courses, status_filter=status_filter, course_filter=course_filter)
+
+
+@app.post("/admin/compras/<int:purchase_id>/marcar-pago")
+@app.post("/admin/compra/<int:purchase_id>/marcar-pago")
+@admin_required
+def admin_marcar_compra_paga(purchase_id: int):
+    purchase = mark_purchase_paid_by_id(purchase_id)
+    if purchase:
+        flash("Compra marcada como paga e acesso liberado.", "success")
+    return redirect(request.referrer or url_for("admin_compras"))
+
+
+@app.post("/admin/compra/<int:purchase_id>/cancelar")
+@admin_required
+def admin_cancelar_compra(purchase_id: int):
+    purchase = query_one("SELECT * FROM purchases WHERE id = ?", (purchase_id,))
+    if not purchase:
+        abort(404)
+    execute("UPDATE purchases SET status = 'canceled', updated_at = ? WHERE id = ?", (now_str(), purchase_id))
+    execute("UPDATE enrollments SET status = 'blocked', updated_at = ? WHERE user_id = ? AND course_id = ?", (now_str(), purchase["user_id"], purchase["course_id"]))
+    flash("Compra cancelada e acesso bloqueado, quando existente.", "success")
+    return redirect(request.referrer or url_for("admin_compras"))
+
+
+@app.route("/admin/relatorios")
+@admin_required
+def admin_relatorios():
+    return render_template("admin/relatorios.html")
+
+
+@app.get("/admin/exportar/alunos")
+@admin_required
+def admin_exportar_alunos():
+    rows = []
+    for user_row in query_all("SELECT * FROM users ORDER BY id"):
         courses = query_all(
             """
             SELECT c.title
@@ -2352,130 +2869,43 @@ def admin_alunos():
             """,
             (user_row["id"],),
         )
-        rows.append({"user": user_row, "active_courses": ", ".join(row["title"] for row in courses)})
-    return render_template("admin_alunos.html", rows=rows)
+        online = "online" if user_row["last_seen_at"] and user_row["last_seen_at"] >= online_cutoff() else "offline"
+        rows.append([user_row["id"], user_row["name"], user_row["email"], user_row["role"], user_row["created_at"], user_row["last_seen_at"] or "", online, ", ".join(row["title"] for row in courses)])
+    return csv_response("alunos.csv", ["id", "nome", "email", "role", "created_at", "ultimo_acesso", "status_online", "cursos_ativos"], rows)
 
 
-@app.post("/admin/alunos/<int:user_id>/liberar")
-def admin_liberar_acesso(user_id: int):
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("login", next=request.path))
-    course = get_course_by_slug("escola-de-profetas")
-    activate_enrollment(user_id, course["id"])
-    flash("Acesso liberado manualmente.", "success")
-    return redirect(url_for("admin_alunos"))
+@app.get("/admin/exportar/compras")
+@admin_required
+def admin_exportar_compras():
+    rows = [[row["id"], row["user_name"], row["email"], row["course_title"], row["status"], money_from_cents(row["amount_cents"]), row["payment_provider"] or "", row["payment_reference"] or "", row["created_at"], row["confirmed_at"] or ""] for row in get_admin_purchase_rows()]
+    return csv_response("compras.csv", ["id", "usuario", "email", "curso", "status", "valor", "provider", "reference", "created_at", "confirmed_at"], rows)
 
 
-@app.post("/admin/alunos/<int:user_id>/bloquear")
-def admin_bloquear_acesso(user_id: int):
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("login", next=request.path))
-    course = get_course_by_slug("escola-de-profetas")
-    execute("UPDATE enrollments SET status = 'blocked', updated_at = ? WHERE user_id = ? AND course_id = ?", (now_str(), user_id, course["id"]))
-    flash("Acesso bloqueado.", "success")
-    return redirect(url_for("admin_alunos"))
-
-
-@app.route("/admin/compras")
-def admin_compras():
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("login", next=request.path))
-    rows = query_all(
+@app.get("/admin/exportar/progresso")
+@admin_required
+def admin_exportar_progresso():
+    rows = []
+    progress_rows = query_all(
         """
-        SELECT p.*, u.name AS user_name, u.email, c.title AS course_title
-        FROM purchases p
-        JOIN users u ON u.id = p.user_id
-        JOIN courses c ON c.id = p.course_id
-        ORDER BY p.created_at DESC
+        SELECT cp.*, u.name AS user_name, u.email
+        FROM course_progress cp
+        JOIN users u ON u.id = cp.user_id
+        ORDER BY u.name, cp.cycle_slug, cp.content_slug
         """
     )
-    return render_template("admin_compras.html", rows=rows)
+    for row in progress_rows:
+        rows.append([row["user_name"], row["email"], row["course_slug"], row["cycle_slug"], row["content_slug"], row["status"], row["completed_at"] or "", row["updated_at"]])
+    return csv_response("progresso.csv", ["usuario", "email", "curso", "ciclo", "conteudo", "status", "completed_at", "updated_at"], rows)
 
 
-@app.post("/admin/compras/<int:purchase_id>/marcar-pago")
-def admin_marcar_compra_paga(purchase_id: int):
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("login", next=request.path))
-    purchase = mark_purchase_paid_by_id(purchase_id)
-    if purchase:
-        flash("Compra marcada como paga e acesso liberado.", "success")
-    return redirect(url_for("admin_compras"))
-
-
-@app.route("/admin", methods=["GET", "POST"])
-def admin():
-    admin_user = require_admin()
-    if admin_user is None:
-        return redirect(url_for("index"))
-    if request.method == "POST":
-        question_id = int(request.form.get("question_id", "0"))
-        answer = request.form.get("answer", "").strip()
-        status = request.form.get("status", "respondida")
-        sensitive = 1 if request.form.get("is_sensitive") else 0
-        if question_id and answer:
-            execute(
-                "UPDATE questions_channel SET answer = ?, status = ?, is_sensitive = ?, answered_at = ? WHERE id = ?",
-                (answer, status, sensitive, now_str(), question_id),
-            )
-            flash("Dúvida atualizada no painel privado.", "success")
-            return redirect(url_for("admin"))
-    users = query_all("SELECT * FROM users ORDER BY last_seen_at DESC")
-    selected_category = request.args.get("category", "")
-    if selected_category:
-        questions = query_all(
-            "SELECT q.*, u.name FROM questions_channel q JOIN users u ON u.id = q.user_id WHERE q.category = ? ORDER BY q.created_at DESC",
-            (selected_category,),
-        )
-    else:
-        questions = query_all(
-            "SELECT q.*, u.name FROM questions_channel q JOIN users u ON u.id = q.user_id ORDER BY q.created_at DESC"
-        )
-    categories = [row["category"] for row in query_all("SELECT DISTINCT category FROM questions_channel ORDER BY category")]
-    prayers = query_all("SELECT p.*, u.name FROM prayer_requests p JOIN users u ON u.id = p.user_id WHERE p.status = 'pendente' ORDER BY p.created_at DESC")
-    journals = query_all("SELECT j.*, u.name FROM journal_entries j JOIN users u ON u.id = j.user_id WHERE j.share_with_mentor = 1 ORDER BY j.created_at DESC")
-    user_rows = []
-    online_count = active_today = on_track = delayed = 0
-    attention = []
-    for row in users:
-        seen = parse_dt(row["last_seen_at"]) if row["last_seen_at"] else now() - timedelta(days=99)
-        progress = week_progress(row)
-        status = "online" if now() - seen <= timedelta(minutes=5) else ("ativo hoje" if seen.date() == now().date() else "inativo")
-        online_count += int(status == "online")
-        active_today += int(status in {"online", "ativo hoje"})
-        on_track += int(progress["percent"] >= 70)
-        delayed += int(progress["percent"] < 30)
-        reasons = []
-        if now() - seen >= timedelta(days=7):
-            reasons.append("sem acesso há 7 dias")
-        if progress["percent"] < 30:
-            reasons.append("progresso abaixo de 30%")
-        user_rows.append({"user": row, "week": get_current_week(row), "progress": progress, "status": status})
-        if reasons:
-            attention.append({"name": row["name"], "reasons": ", ".join(reasons)})
-    sensitive_words = ["ansiedade", "medo", "triste", "sem forças", "desânimo", "desanimo"]
-    for journal in journals:
-        if any(word in journal["content"].lower() for word in sensitive_words):
-            attention.append({"name": journal["name"], "reasons": "diário compartilhado com linguagem sensível"})
-    for question in questions:
-        if question["is_sensitive"]:
-            attention.append({"name": question["name"], "reasons": "dúvida sensível"})
-    for prayer in prayers:
-        attention.append({"name": prayer["name"], "reasons": "pedido de oração pendente"})
-    cards = {
-        "online": online_count,
-        "active_today": active_today,
-        "on_track": on_track,
-        "delayed": delayed,
-        "prayers": len(prayers),
-        "questions": sum(1 for q in questions if q["status"] == "nova"),
-        "journals": len(journals),
-    }
-    log_activity("abriu painel admin")
-    return render_template("admin.html", cards=cards, user_rows=user_rows, questions=questions, prayers=prayers, journals=journals, attention=attention, categories=categories, selected_category=selected_category)
+@app.get("/admin/exportar/comentarios")
+@admin_required
+def admin_exportar_comentarios():
+    rows = []
+    for item in get_admin_comment_rows():
+        row = item["row"]
+        rows.append([row["user_name"], row["email"], row["course_slug"], row["cycle_slug"], row["content_slug"], row["comment_text"], row["created_at"]])
+    return csv_response("comentarios.csv", ["usuario", "email", "curso", "ciclo", "conteudo", "comentario", "created_at"], rows)
 
 
 @app.post("/api/ping")

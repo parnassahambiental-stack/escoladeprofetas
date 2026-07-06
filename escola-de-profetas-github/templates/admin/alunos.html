@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Alunos · Painel Admin{% endblock %}
+{% block body_class %}dark-gold-bg admin-page{% endblock %}
+{% block content %}
+<section class="admin-shell">
+  <header class="admin-header">
+    <div>
+      <p class="eyebrow">Painel Administrativo</p>
+      <h1>Alunos cadastrados</h1>
+      <p>Busque alunos, veja acesso ativo, presença e progresso.</p>
+    </div>
+    <a class="button primary" href="{{ url_for('admin_exportar_alunos') }}">Exportar alunos CSV</a>
+  </header>
+
+  <form class="admin-filter-bar" method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nome ou e-mail">
+    <select name="status">
+      <option value="">Todos</option>
+      {% for value, label in [('com_acesso','Com acesso ativo'),('sem_acesso','Sem acesso ativo'),('online','Online'),('offline','Offline'),('admin','Admin'),('student','Student')] %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="button" type="submit">Filtrar</button>
+  </form>
+
+  <section class="admin-section">
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>ID</th><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cadastro</th><th>Último acesso</th><th>Status</th><th>Cursos ativos</th><th>Progresso</th><th>Ações</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.user.id }}</td>
+            <td><a href="{{ url_for('admin_aluno_detalhe', user_id=row.user.id) }}">{{ row.user.name }}</a></td>
+            <td>{{ row.user.email }}</td>
+            <td>{{ row.user.role }}</td>
+            <td>{{ row.user.created_at }}</td>
+            <td>{{ row.user.last_seen_at or '-' }}</td>
+            <td><span class="admin-badge {% if row.is_online %}admin-badge-online{% endif %}">{{ 'online' if row.is_online else 'offline' }}</span></td>
+            <td>{{ row.active_courses or 'Nenhum' }}</td>
+            <td>{{ row.progress.percent }}%</td>
+            <td class="admin-actions">
+              <a class="button" href="{{ url_for('admin_aluno_detalhe', user_id=row.user.id) }}">Detalhes</a>
+              <form method="post" action="{{ url_for('admin_liberar_acesso', user_id=row.user.id) }}"><button class="button primary" type="submit">Liberar</button></form>
+              <form method="post" action="{{ url_for('admin_bloquear_acesso', user_id=row.user.id) }}"><button class="button" type="submit">Bloquear</button></form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="10">Nenhum aluno encontrado.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+{% endblock %}

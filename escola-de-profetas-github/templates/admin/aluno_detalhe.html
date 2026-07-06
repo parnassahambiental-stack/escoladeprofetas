@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ user_row.name }} · Painel Admin{% endblock %}
+{% block body_class %}dark-gold-bg admin-page{% endblock %}
+{% block content %}
+<section class="admin-shell">
+  <header class="admin-header">
+    <div>
+      <p class="eyebrow">Detalhe do aluno</p>
+      <h1>{{ user_row.name }}</h1>
+      <p>{{ user_row.email }} · {{ user_row.role }} · cadastro em {{ user_row.created_at }}</p>
+    </div>
+    <div class="admin-actions">
+      <form method="post" action="{{ url_for('admin_liberar_acesso', user_id=user_row.id) }}"><button class="button primary" type="submit">Liberar acesso</button></form>
+      <form method="post" action="{{ url_for('admin_bloquear_acesso', user_id=user_row.id) }}"><button class="button" type="submit">Bloquear acesso</button></form>
+    </div>
+  </header>
+
+  <section class="grid two">
+    <article class="admin-section">
+      <h2>Compras</h2>
+      {% for purchase in purchases %}
+        <div class="admin-mini-row"><strong>{{ purchase.course_title }}</strong><span>{{ purchase.status }} · R$ {{ '%.2f'|format((purchase.amount_cents or 0) / 100) }} · {{ purchase.created_at }}</span></div>
+      {% else %}
+        <p class="empty">Nenhuma compra registrada.</p>
+      {% endfor %}
+    </article>
+    <article class="admin-section">
+      <h2>Matrículas</h2>
+      {% for enrollment in enrollments %}
+        <div class="admin-mini-row"><strong>{{ enrollment.course_title }}</strong><span>{{ enrollment.status }} · atualizado em {{ enrollment.updated_at }}</span></div>
+      {% else %}
+        <p class="empty">Nenhuma matrícula.</p>
+      {% endfor %}
+    </article>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title"><h2>Progresso por ciclo</h2></div>
+    <div class="admin-cycle-grid">
+      {% for item in cycle_rows %}
+        <article>
+          <strong>{{ item.cycle.name }}</strong>
+          <span>{{ item.cycle.title }}</span>
+          <div class="progress-track"><div class="progress-bar" style="--progress: {{ item.progress.percent }}%"></div></div>
+          <small>{{ item.progress.done }}/{{ item.progress.total }} · {{ item.progress.percent }}%</small>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title"><h2>Comentários/reflexões</h2></div>
+    {% for item in comments %}
+      {% set row = item.row %}
+      <div class="admin-mini-row"><strong>{{ item.content.title if item.content else row.content_slug }}</strong><span>{{ row.cycle_slug }} · {{ row.updated_at }}</span><p>{{ row.comment_text }}</p></div>
+    {% else %}
+      <p class="empty">Nenhuma reflexão registrada.</p>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}

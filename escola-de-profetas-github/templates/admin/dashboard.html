@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Painel Administrativo · Escola de Profetas{% endblock %}
+{% block body_class %}dark-gold-bg admin-page{% endblock %}
+{% block content %}
+<section class="admin-shell">
+  <header class="admin-header">
+    <div>
+      <p class="eyebrow">Painel Administrativo</p>
+      <h1>Visão geral da Escola</h1>
+      <p>Fluxo de alunos, vendas, progresso, presença online e reflexões em uma visão privada.</p>
+    </div>
+    <div class="admin-export-buttons">
+      <a class="button" href="{{ url_for('admin_relatorios') }}">Relatórios</a>
+      <a class="button primary" href="{{ url_for('admin_exportar_alunos') }}">Exportar alunos</a>
+    </div>
+  </header>
+
+  <section class="admin-kpi-grid">
+    {% for card in cards %}
+      <article class="admin-kpi-card">
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}</strong>
+        <small>{{ card.hint }}</small>
+      </article>
+    {% endfor %}
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title">
+      <h2>Usuários online agora</h2>
+      <span class="admin-badge admin-badge-online">{{ online_users|length }} online</span>
+    </div>
+    {% if online_users %}
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Página atual</th><th>Último acesso</th><th>Status do curso</th></tr></thead>
+          <tbody>
+          {% for user_row in online_users %}
+            <tr>
+              <td>{{ user_row.name }}</td>
+              <td>{{ user_row.email }}</td>
+              <td>{{ user_row.spiritual_profile or user_row.role }}</td>
+              <td>{{ user_row.current_page or '-' }}</td>
+              <td>{{ user_row.last_seen_at or '-' }}</td>
+              <td>{{ user_row.active_courses or 'Sem acesso ativo' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">Nenhum usuário online no momento.</p>
+    {% endif %}
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title"><h2>Fluxo dos alunos</h2></div>
+    <div class="admin-funnel">
+      {% for item in funnel %}
+        <article>
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.percent }}% dos cadastrados</small>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title"><h2>Status dos alunos por curso</h2><a href="{{ url_for('admin_compras') }}">Ver compras</a></div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Curso</th><th>Acesso ativo</th><th>Bloqueados</th><th>Pendentes</th><th>Pagas</th><th>Progresso médio</th><th>Receita</th></tr></thead>
+        <tbody>
+        {% for item in course_status %}
+          <tr>
+            <td>{{ item.course.title }}</td>
+            <td>{{ item.active }}</td>
+            <td>{{ item.blocked }}</td>
+            <td>{{ item.pending }}</td>
+            <td>{{ item.paid }}</td>
+            <td>{{ item.average_progress }}%</td>
+            <td>{{ item.revenue }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title"><h2>Progresso por ciclo · Escola de Profetas</h2></div>
+    <div class="admin-cycle-grid">
+      {% for item in cycle_status %}
+        <article>
+          <strong>{{ item.cycle.name }}</strong>
+          <span>{{ item.cycle.title }}</span>
+          <small>Iniciaram: {{ item.started }} · Concluíram aula: {{ item.one_done }} · Ciclo concluído: {{ item.completed }}</small>
+          <div class="progress-track"><div class="progress-bar" style="--progress: {{ item.average }}%"></div></div>
+          <small>{{ item.average }}% médio</small>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="grid two">
+    <article class="admin-section">
+      <div class="admin-section-title"><h2>Fluxo financeiro</h2></div>
+      <div class="admin-money-grid">
+        <span><strong>{{ finance.total }}</strong> Receita total</span>
+        <span><strong>{{ finance.month }}</strong> Receita do mês</span>
+        <span><strong>{{ finance.week }}</strong> Últimos 7 dias</span>
+        <span><strong>{{ finance.ticket }}</strong> Ticket médio</span>
+        <span><strong>{{ finance.paid }}</strong> Pagas</span>
+        <span><strong>{{ finance.pending }}</strong> Pendentes</span>
+        <span><strong>{{ finance.canceled }}</strong> Canceladas</span>
+        <span><strong>{{ finance.refunded }}</strong> Reembolsadas</span>
+      </div>
+    </article>
+
+    <article class="admin-section">
+      <div class="admin-section-title"><h2>Comentários recentes</h2><a href="{{ url_for('admin_course_comments') }}">Ver todos</a></div>
+      {% for item in recent_comments %}
+        {% set row = item.row %}
+        <div class="admin-mini-row">
+          <strong>{{ row.user_name }}</strong>
+          <span>{{ item.cycle.name if item.cycle else row.cycle_slug }} · {{ item.content.title if item.content else row.content_slug }}</span>
+          <p>{{ row.comment_text }}</p>
+        </div>
+      {% else %}
+        <p class="empty">Nenhuma reflexão recente.</p>
+      {% endfor %}
+    </article>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title"><h2>Progresso dos alunos</h2><a href="{{ url_for('admin_alunos') }}">Ver alunos</a></div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Aluno</th><th>E-mail</th><th>Curso</th><th>Ciclo atual</th><th>Aulas</th><th>Progresso</th><th>Último acesso</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for item in progress_rows %}
+          <tr>
+            <td><a href="{{ url_for('admin_aluno_detalhe', user_id=item.user.id) }}">{{ item.user.name }}</a></td>
+            <td>{{ item.user.email }}</td>
+            <td>{{ item.course }}</td>
+            <td>{{ item.cycle }}</td>
+            <td>{{ item.progress.done }}/{{ item.progress.total }}</td>
+            <td>{{ item.progress.percent }}%</td>
+            <td>{{ item.user.last_seen_at or '-' }}</td>
+            <td><span class="admin-badge">{{ item.status }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <div class="admin-section-title"><h2>Compras recentes</h2><a href="{{ url_for('admin_compras') }}">Ver todas</a></div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Data</th><th>Aluno</th><th>Curso</th><th>Status</th><th>Valor</th><th>Ações</th></tr></thead>
+        <tbody>
+        {% for row in finance_rows %}
+          <tr>
+            <td>{{ row.created_at }}</td>
+            <td>{{ row.user_name }}</td>
+            <td>{{ row.course_title }}</td>
+            <td><span class="admin-badge admin-badge-{{ row.status }}">{{ row.status }}</span></td>
+            <td>R$ {{ '%.2f'|format((row.amount_cents or 0) / 100) }}</td>
+            <td class="admin-actions">
+              {% if row.status != 'paid' %}
+                <form method="post" action="{{ url_for('admin_marcar_compra_paga', purchase_id=row.id) }}"><button class="button primary" type="submit">Marcar pago</button></form>
+              {% endif %}
+              <form method="post" action="{{ url_for('admin_cancelar_compra', purchase_id=row.id) }}"><button class="button" type="submit">Cancelar</button></form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">Nenhuma compra registrada.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Relatórios · Painel Admin{% endblock %}
+{% block body_class %}dark-gold-bg admin-page{% endblock %}
+{% block content %}
+<section class="admin-shell">
+  <header class="admin-header">
+    <div>
+      <p class="eyebrow">Painel Administrativo</p>
+      <h1>Relatórios exportáveis</h1>
+      <p>CSV simples com dados reais do banco local.</p>
+    </div>
+  </header>
+  <section class="admin-section">
+    <div class="admin-export-grid">
+      <a class="button primary" href="{{ url_for('admin_exportar_alunos') }}">Exportar alunos CSV</a>
+      <a class="button primary" href="{{ url_for('admin_exportar_compras') }}">Exportar compras CSV</a>
+      <a class="button primary" href="{{ url_for('admin_exportar_progresso') }}">Exportar progresso CSV</a>
+      <a class="button primary" href="{{ url_for('admin_exportar_comentarios') }}">Exportar comentários CSV</a>
+    </div>
+    <p class="empty">Antes de produção, adicionar CSRF nas ações POST e trocar credenciais de protótipo.</p>
+  </section>
+</section>
+{% endblock %}

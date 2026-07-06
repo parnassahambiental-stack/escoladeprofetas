@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Comentários · Painel Admin{% endblock %}
+{% block body_class %}dark-gold-bg admin-page{% endblock %}
+{% block content %}
+<section class="admin-shell">
+  <header class="admin-header">
+    <div>
+      <p class="eyebrow">Painel Administrativo</p>
+      <h1>Comentários e reflexões</h1>
+      <p>Reflexões registradas pelos alunos nas aulas internas.</p>
+    </div>
+    <a class="button primary" href="{{ url_for('admin_exportar_comentarios') }}">Exportar comentários CSV</a>
+  </header>
+
+  <form class="admin-filter-bar" method="get">
+    <input type="search" name="q" value="{{ user_filter }}" placeholder="Aluno ou e-mail">
+    <select name="cycle">
+      <option value="">Todos os ciclos</option>
+      {% for cycle in cycles %}
+        <option value="{{ cycle.slug }}" {% if cycle_filter == cycle.slug %}selected{% endif %}>{{ cycle.name }} · {{ cycle.title }}</option>
+      {% endfor %}
+    </select>
+    <button class="button" type="submit">Filtrar</button>
+  </form>
+
+  <section class="admin-comments-list">
+    {% for item in rows %}
+      {% set row = item.row %}
+      <article class="admin-comment-card glass-card">
+        <div>
+          <span class="admin-badge">{{ item.cycle.name if item.cycle else row.cycle_slug }}</span>
+          <span class="admin-badge">{{ row.status or 'nao_iniciado' }}</span>
+        </div>
+        <h2>{{ item.content.title if item.content else row.content_slug }}</h2>
+        <p><strong>{{ row.user_name }}</strong> · {{ row.email }} · {{ row.updated_at }}</p>
+        <blockquote>{{ row.comment_text }}</blockquote>
+      </article>
+    {% else %}
+      <section class="admin-section"><p class="empty">Nenhuma reflexão encontrada.</p></section>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}
